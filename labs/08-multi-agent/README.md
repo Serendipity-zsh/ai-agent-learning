@@ -1,3 +1,5 @@
 # Lab 08：多 Agent 委派协议
 
-定义 `TaskEnvelope`（目标、输入 artifact、工具 allowlist、预算、成功条件）和 `Artifact`（内容、证据、质量声明）。Coordinator 只接受类型化 artifact，不转发整段聊天历史。下一轮将提供参考实现与测试。
+运行：`python3 -m unittest labs/08-multi-agent/test_orchestrator.py -v`
+
+参考实现只传递类型化 Task/Artifact，强制 evidence 与共享预算；它刻意不模拟多轮聊天，避免把“多人对话”误当作协作协议。

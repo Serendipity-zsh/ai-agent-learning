@@ -50,5 +50,35 @@ const PROJECT_SOURCE_TRACES = {
     ],
     tests: ['同一 session 在不同渠道恢复时，验证资源 manifest 与身份 scope 不漂移。', '取消 streaming 后，确认未完成 tool 的状态和最终事件可恢复解释。', '不可信工具输出不得触发 memory 写入或越过 write confirmation。'],
     compare: 'OpenClaw 是完整多渠道个人 Agent 产品 runtime；Hermes 更像 Python 集中式 AIAgent loop；LangGraph 则提供更通用的图/持久化底座。'
+  },
+  llamaindex: {
+    title: '从 Document 到 QueryEngine：RAG 数据路径', question: 'LlamaIndex 如何把文档血缘保留到最终回答？',
+    state: ['Document：原始内容与 metadata', 'Node：切分后的可索引单元及 source relationship', 'NodeWithScore：召回结果与得分', 'Response：合成答案及 source nodes'],
+    steps: [['摄取', 'Reader/Document 与 parser。', 'Document 被转换为保留 parent/source 的 Nodes。', 'chunk 必须能回到原始 source。'], ['索引', 'StorageContext 与 index/vector store。', 'Nodes、embedding、docstore 写入对应后端。', 'parser/embedding 版本影响可复现性。'], ['查询', 'Retriever 返回 NodeWithScore。', 'postprocessor/reranker 收缩候选，synthesizer 接收证据。', '检索和合成必须独立评估。']],
+    tests: ['删除 source 后断言其 Node 不再召回。', '断言 Response 的 evidence 可反查 source/version。'], compare: 'LlamaIndex 围绕数据模型与 QueryEngine；Haystack 围绕 typed component/pipeline。'
+  },
+  haystack: {
+    title: 'Component Pipeline 如何调度确定性 RAG', question: 'Haystack 的 socket/Component 为什么比“函数链”更适合生产 RAG？',
+    state: ['Component input/output sockets', 'Pipeline connection 与 ready/deferred 状态', '每个 component 的序列化配置'],
+    steps: [['建图', 'component input/output types。', 'Pipeline 检查连接与可达性。', 'schema 不匹配尽早失败。'], ['调度', 'ready component 的输入。', '运行结果写入下游 socket，循环受次数限制。', '确定性 pipeline 与 Agent loop 分层。'], ['工具化', 'PipelineTool 的输入 schema。', '整条验证过的 RAG pipeline 作为一个工具。', '不要让 Agent 重写每个检索步骤。']],
+    tests: ['断开 required socket 应在运行前失败。', '循环 Pipeline 达到上限时稳定终止。'], compare: 'Haystack 适合明确 DAG；LangGraph 适合含状态、循环、恢复与 HITL 的运行时。'
+  },
+  letta: {
+    title: 'Memory Tools 如何参与 Context 管理', question: 'Letta 的 core/recall/archival memory 为什么要分层？',
+    state: ['Core blocks：常驻 prompt memory', 'Recall：会话/事件历史', 'Archival/MemFS：按需外部知识'],
+    steps: [['编译', 'core block 和窗口内消息。', 'context manager 计算 token 并组织 request。', '常驻信息必须少而稳定。'], ['调用 memory tool', '模型提出 edit/search。', '工具修改 block 或外部 store，下一轮重新编译。', '模型提议不绕过 validator/权限。'], ['分页', 'recall/archival 查询。', '只把任务相关结果放入工作集。', '外部 memory 不等于无限上下文。']],
+    tests: ['memory edit 被拒绝时 core block 不变。', 'archival result 过期或越权时不可进入 context。'], compare: 'Letta 将记忆置于 stateful Agent 内；Mem0 作为可插拔 memory service。'
+  },
+  hermes: {
+    title: '集中式 AIAgent Loop 的策略汇合点', question: 'Hermes 为什么将 provider、工具、压缩、fallback 与 memory flush 汇聚在 AIAgent？',
+    state: ['Prompt builder 输出', 'provider response / tool calls', 'session history、预算、memory candidates'],
+    steps: [['构建', 'prompt_builder 根据 provider/tool/skill 组装 request。', 'AIAgent 持有本轮预算与可取消调用。', 'Prompt 与 loop 执行分离。'], ['工具执行', 'tool dispatch/MCP 配置。', '串行或并行结果写回 history。', '每个工具仍要参数和权限边界。'], ['压缩与记忆', '接近窗口时压缩前 flush candidate。', 'memory provider 写入后恢复 loop。', '压缩不能是持久业务状态。']],
+    tests: ['provider fallback 不改变 tool/result message contract。', '取消后不接受迟到 tool result 写入 session。'], compare: 'Hermes 的单体 loop 易统一策略；OpenClaw 的多渠道 runtime 分层更强。'
+  },
+  openhands: {
+    title: 'Action/Observation 如何跨越 Agent 与 Sandbox', question: 'OpenHands 如何把模型决策与真实代码执行隔离？',
+    state: ['Agent state/events', 'Action：bash/file/browser 等结构化意图', 'Observation：sandbox 返回的可记录结果'],
+    steps: [['决策', 'Agent 从 EventStream 读取 observations。', '模型输出 typed Action。', '决策不直接碰宿主文件系统。'], ['执行', 'runtime client 与 ActionExecutor。', '隔离容器执行命令并返回 Observation。', '挂载、网络、资源限制是安全边界。'], ['回放', 'EventStream append-only events。', 'UI/Agent 都消费同一事实流。', 'replay 使用已记录 observation，不随意重跑副作用。']],
+    tests: ['禁止网络的 sandbox 无法访问外部地址。', 'action 超时后进程树被清理并记录 observation。'], compare: 'OpenHands 提供开放 sandbox/action runtime；Claude Code 只能依据公开产品行为作架构分析。'
   }
 };

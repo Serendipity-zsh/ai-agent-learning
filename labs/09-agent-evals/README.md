@@ -1,3 +1,5 @@
 # Lab 09：Agent Eval Harness
 
-一个有效 trial 至少保存 task、initial state、完整 transcript、final artifact、grader result。分别写 outcome grader、process grader、cost/latency budget；比较变更前后的成对结果。下一轮将提供参考实现与测试。
+运行：`python3 -m unittest labs/09-agent-evals/test_harness.py -v`
+
+参考实现要求 outcome、过程约束和预算同时通过。正确答案若来自禁止写操作，仍是失败样本。

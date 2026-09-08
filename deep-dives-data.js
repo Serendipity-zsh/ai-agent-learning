@@ -132,6 +132,57 @@ const DEEP_DIVES = [
     drills: ['为“审批后创建工单”画 StateGraph，指出每个 checkpoint 与副作用边界。', '设计两个并行检索节点的 reducer，保证 deterministic merge。', '如何测试 resume 不会重复执行 `send_email`？'],
     answer: '必须说明 resume 会重新运行 node，且副作用要幂等；只说“用数据库保存 state”不够。',
     sourceMap: [['LangGraph', 'StateGraph → compile → Pregel super-steps → channels/reducers → checkpointer → interrupt', '按这个顺序阅读；先理解 state/reducer，再读 persistence 和 interrupt，最后看 prebuilt ToolNode。'], ['OpenHands', 'EventStream → action/observation → runtime client → sandbox executor', '它不是 StateGraph，但 Action/Observation event log 是对可回放运行事实的另一种建模。']]
+  },
+  {
+    chapterId: 'multi-agent', label: 'DEEP DIVE 08', title: '多 Agent 的本质是类型化委派与 Artifact 合并', premise: '多 Agent 只有在任务可分解、上下文可隔离、交付物可验证时才降低复杂度；否则只是增加模型回合与聊天噪音。',
+    model: `flowchart LR
+  C[Coordinator] --> T[Task envelope]
+  T --> W1[Worker A]
+  T --> W2[Worker B]
+  W1 --> A[Typed artifacts]
+  W2 --> A
+  A --> V[Verifier]
+  V --> C`,
+    derivation: ['委派契约至少包含 goal、输入 artifact references、tool allowlist、预算、deadline 与 acceptance criteria。不要把 coordinator 的全部聊天历史复制给 worker。', 'worker 返回的是带 evidence、状态、成本与版本的 Artifact；coordinator 合并 artifact，而不是判断“哪个角色说话更像专家”。', 'A2A/MCP 解决互操作，不替代委派治理：Agent Card/能力发现、任务状态、artifact 与授权仍需由业务 runtime 约束。'],
+    code: `task = Task(goal, artifacts, allowed_tools, budget, acceptance)\nresult = worker.run(task)\nassert result.evidence and result.spent <= task.budget\nverdict = verifier.check(result, task.acceptance)`,
+    trace: ['coordinator 为检索 worker 分配只读 search 工具和 2k token。', 'worker 返回 evidence artifact；没有证据的自然语言结论被 verifier 拒绝。', '另一个 worker 做独立反证；coordinator 只合并通过 contract 的 artifact。'],
+    failures: [['角色扮演群聊', '没有输入/输出 contract，模型不断互相复述。', '用 task/artifact schema 与明确终止条件。'], ['权限继承过宽', '子 Agent 获得主 Agent 的秘密和写权限。', '按任务最小 allowlist 与独立 identity/sandbox。'], ['并行写冲突', '多个 worker 修改同一资源。', '资源锁、merge policy、prepare/confirm 与补偿。']],
+    drills: ['为“代码审查 + 修复”设计两个 worker 的 artifact schema。', '哪些任务不能安全并行？说明共享资源冲突。', '如何将 A2A task 生命周期映射到内部 checkpoint？'], answer: '高分答案强调 artifact、预算、权限和 verifier，而不是 Agent 人设。',
+    sourceMap: [['AutoGen', 'message runtime / team → termination', '用于理解消息协作；要额外补 artifact contract。'], ['OpenHands', 'Agent → Action/Observation EventStream → sandbox', '用隔离 runtime 承载有副作用的 worker。']]
+  },
+  {
+    chapterId: 'production', label: 'DEEP DIVE 09', title: '生产 Agent：把不可靠执行变成可恢复的工作流', premise: '生产目标不是“模型永不失败”，而是在 provider、worker、网络和用户都可能中断时，确保状态可解释、副作用可控、任务可接管。',
+    model: `flowchart LR
+  Q[Queue] --> L[Lease worker]
+  L --> H[Heartbeat]
+  L --> O[Outbox]
+  O --> G[Idempotent gateway]
+  G --> R[Receipt]
+  L --> C[Cancel / compensation]`,
+    derivation: ['队列语义通常是 at-least-once：lease 超时后其他 worker 可能接管，因此每次外部写必须带 idempotency key。', 'outbox 将“持久状态变更”和“待发送副作用”一起提交；独立 dispatcher 可重复投递，但 gateway 依据 key 只生效一次。', '评估必须同时保存 task、trial、trace、outcome、grader 与成本。正确输出若经由越权工具得到，仍是失败。'],
+    code: `if claim(job, lease):\n    checkpoint(job)\n    outbox.append(effect, idempotency_key)\n    receipt = gateway.send_once(idempotency_key)\n    checkpoint(receipt)`,
+    trace: ['worker 领取 job 后定期 heartbeat；失联则 lease 到期。', 'cancel 写入 durable flag，后续 node 先检查再行动。', 'outbox 重试期间 gateway 返回同一 receipt，避免重复邮件/工单。'],
+    failures: [['无 lease 的后台任务', '两个 worker 同时执行同一 run。', '原子 claim + heartbeat + expiry + fencing/idempotency。'], ['只评最终答案', '越权路径和昂贵循环被掩盖。', 'process grader、tool trace、成本/SLO gate。'], ['删除不传播', 'PII 仍留在 index/cache/trace。', '数据分类、TTL、删除任务和可验证 receipt。']],
+    drills: ['给 tool run 设计 P95 延迟、成功率、重复副作用率与安全拒绝率。', '解释 lease 与 idempotency 为什么必须同时存在。', '设计一个删除传播的验收测试。'], answer: '只部署容器并不等于生产化；必须说明可观测、恢复、安全、成本和数据生命周期。',
+    sourceMap: [['LangGraph', 'checkpointer / pending writes / interrupt', '借鉴恢复语义，但外部 gateway 的 exactly-once 仍由业务实现。'], ['OpenHands', 'sandbox runtime / EventStream', '借鉴隔离执行与 action-observation 可回放。']]
+  },
+  {
+    chapterId: 'frameworks', label: 'DEEP DIVE 10', title: 'MCP 与 A2A：协议能力不等于执行授权', premise: '协议解决发现、消息与互操作；Agent runtime 仍要实现身份、最小权限、确认、超时、审计和业务幂等。',
+    model: `sequenceDiagram
+  participant H as Host/Runtime
+  participant C as MCP Client
+  participant S as MCP Server
+  H->>C: task + actor scope
+  C->>S: initialize / negotiate
+  C->>S: tool call (validated args)
+  S-->>C: result / error
+  C-->>H: normalized observation`,
+    derivation: ['MCP 生命周期包含初始化/版本与能力协商、正常操作和底层 transport 关闭；HTTP 与 stdio 的 credential 与授权边界不同。', '对 HTTP MCP，token 必须面向正确 resource/audience；server 不应把上游 token 透传给下游服务。MCP schema 校验不等于业务授权。', 'A2A 场景应把对方 Agent 看成不透明服务：通过能力描述、任务状态和 artifact 交付协作；内部仍以自己的 policy 和 verifier 判定是否接受结果。'],
+    code: `capabilities = negotiate(server)\nassert 'tools' in capabilities\ncall = validate_schema(request)\ndecision = authorize(actor, call)\nobservation = normalize(server.call(call))`,
+    trace: ['client initialize 并固定协商版本/capabilities。', 'runtime 根据当前 actor 与任务只暴露必要工具。', 'server 结果转换为带 provenance、error_code、retryable 的内部 observation。'],
+    failures: [['把 MCP 当权限系统', 'server 被发现并不代表当前 actor 有权调用。', '端到端 actor propagation 与 server-side authorization。'], ['token 透传', '下游服务收到不属于它的 token，形成 confused deputy。', '每个 resource 使用受众绑定的独立 token。'], ['协议成功即相信 artifact', '远端 Agent 可返回无证据或过期结果。', 'artifact contract、freshness/provenance 与 verifier。']],
+    drills: ['画出 stdio MCP 和 HTTP MCP 的 secret/authorization 边界。', '为 A2A artifact 增加哪些字段才能支持审计？', '为什么 JSON Schema 通过后仍必须做 semantic validation？'], answer: '协议是互操作层；授权、确认和副作用控制必须在 runtime/tool gateway 落地。',
+    sourceMap: [['MCP specification', 'lifecycle → transports → authorization → schema', '按协议顺序阅读，不将 SDK convenience API 误认为规范。'], ['LangChain/LangGraph', 'tool schema → middleware → runtime', '理解框架如何消费工具协议，但不要把 provider adapter 当授权边界。']]
   }
 ];
 
