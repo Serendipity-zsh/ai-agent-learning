@@ -3,100 +3,82 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="从 LLM 基础到 LangChain、LangGraph 与生产级 Agent 的系统学习路径。" />
-  <title>Agent Field Notes · AI Agent 学习地图</title>
+  <meta name="description" content="从第一性原理到生产实现的 AI Agent 技术课程、概念辞典与开源项目源码解读。" />
+  <meta name="theme-color" content="#0b1728" />
+  <title>Agent Systems Manual · AI Agent 技术课程</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#top"><span class="brand-mark">◎</span> Agent Field Notes</a>
-    <nav aria-label="主导航">
-      <a href="#roadmap">路线</a>
-      <a href="#curriculum">课程</a>
-      <a href="#textbook">教材</a>
-      <a href="#projects">项目</a>
+    <a class="brand" href="#map" aria-label="返回技术地图"><span class="brand-sigil">A/</span><span><strong>Agent Systems</strong><small>技术手册 · v2.0</small></span></a>
+    <nav class="primary-nav" aria-label="主导航">
+      <button class="nav-item active" data-view="map">技术地图</button>
+      <button class="nav-item" data-view="course">系统课程</button>
+      <button class="nav-item" data-view="glossary">概念辞典</button>
+      <button class="nav-item" data-view="projects">源码解剖</button>
     </nav>
-    <a class="github-link" href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">GitHub ↗</a>
+    <div class="top-actions"><button class="search-trigger" id="search-trigger" aria-label="打开全站搜索"><span>⌕</span><span>搜索全部内容</span><kbd>⌘ K</kbd></button><a class="repo-link" href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">GitHub ↗</a></div>
   </header>
 
-  <main id="top">
-    <section class="hero shell">
-      <div class="hero-copy">
-        <p class="kicker">AI AGENT / FIELD GUIDE 01</p>
-        <h1>把模型，<br /><em>变成能工作的系统。</em></h1>
-        <p class="hero-intro">一条从 LLM 原理出发，经过 Prompt、RAG、Agent、Memory，最后走到 LangGraph 与生产工程的实践路线。</p>
-        <div class="hero-actions">
-          <a class="button button-primary" href="#curriculum">开始第一课</a>
-          <a class="text-link" href="#projects">查看项目地图 <span>→</span></a>
+  <div class="search-layer" id="search-layer" hidden>
+    <div class="search-dialog" role="dialog" aria-modal="true" aria-label="全站搜索">
+      <div class="search-input-row"><span>⌕</span><input id="global-search" type="search" placeholder="搜索 Token、RAG、checkpoint、OpenClaw…" autocomplete="off" /><button id="search-close" aria-label="关闭搜索">ESC</button></div>
+      <div class="search-hint" id="search-hint">输入关键词，检索 70 个技术点、12 章课程与 11 个项目案例。</div>
+      <div class="search-results" id="search-results"></div>
+    </div>
+  </div>
+
+  <main>
+    <section class="view active" id="view-map" data-view-panel="map">
+      <div class="manual-layout">
+        <aside class="manual-rail">
+          <p class="eyebrow">KNOWLEDGE TREE</p><h1>AI Agent<br />技术全景</h1>
+          <p class="rail-intro">先看系统由哪些层组成，再沿着依赖关系进入每个实现细节。</p>
+          <div class="domain-rail" id="domain-rail"></div>
+          <div class="rail-metrics"><div><strong id="topic-count">70</strong><span>核心技术点</span></div><div><strong id="chapter-count">12</strong><span>系统章节</span></div><div><strong id="project-count">11</strong><span>项目案例</span></div></div>
+        </aside>
+        <div class="map-workspace">
+          <header class="view-heading"><div><p class="eyebrow">TECHNICAL ROADMAP / 01—07</p><h2>从概率模型，到可恢复的生产系统</h2></div><p>这张地图不是名词目录。每个节点都可以打开，查看机制、工程实现、局限、优化方向和一手资料。</p></header>
+          <div class="dependency-line" aria-label="主学习路径"><span>MODEL</span><i></i><span>PROTOCOL</span><i></i><span>KNOWLEDGE</span><i></i><span>RUNTIME</span><i></i><span>STATE</span><i></i><span>CONTROL</span><i></i><span>PRODUCTION</span></div>
+          <div class="domain-map" id="domain-map"></div>
         </div>
-      </div>
-      <div class="hero-orbit" aria-label="Agent 核心构成示意图">
-        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
-        <div class="core"><span>AGENT</span><strong>会感知<br />会行动</strong></div>
-        <span class="orbit-label label-model">model</span><span class="orbit-label label-tools">tools</span>
-        <span class="orbit-label label-state">state</span><span class="orbit-label label-loop">loop</span>
+        <aside class="inspector" id="map-inspector" aria-live="polite"></aside>
       </div>
     </section>
 
-    <section class="signal-strip shell" aria-label="学习目标">
-      <div><span class="signal-number" id="module-count">12</span><span>个学习阶段</span></div>
-      <div><span class="signal-number" id="lesson-count">45</span><span>个递进课次</span></div>
-      <div><span class="signal-number">01</span><span>个生产级毕业项目</span></div>
-      <div class="signal-note">每一课都有原理、实验、源码和验收<br />不靠“看过”判断学会。</div>
-    </section>
-
-    <section id="roadmap" class="section shell">
-      <div class="section-heading"><p class="kicker">THE MAP</p><h2>先看全貌，再进入细节。</h2><p>学习顺序按照系统复杂度递增。每一层都建立在上一层的可观察结果之上。</p></div>
-      <div class="map-grid">
-        <article class="map-card map-foundation"><span class="map-index">01</span><h3>基础能力</h3><p>Model · Message · Tool calling</p><div class="map-line"></div><strong>理解模型在做什么</strong></article>
-        <article class="map-card map-knowledge"><span class="map-index">02</span><h3>知识能力</h3><p>Prompt · Embedding · RAG</p><div class="map-line"></div><strong>让回答有依据</strong></article>
-        <article class="map-card map-action"><span class="map-index">03</span><h3>行动能力</h3><p>Agent · Memory · Middleware</p><div class="map-line"></div><strong>让系统能完成任务</strong></article>
-        <article class="map-card map-control"><span class="map-index">04</span><h3>工程能力</h3><p>Loop · Graph · Eval · Deploy</p><div class="map-line"></div><strong>让行为可控、可复盘</strong></article>
+    <section class="view" id="view-course" data-view-panel="course">
+      <div class="course-layout">
+        <aside class="chapter-sidebar"><div class="sidebar-heading"><p class="eyebrow">SYSTEM COURSE</p><h2>课程目录</h2><div class="course-progress"><span><i id="progress-fill"></i></span><small id="progress-label">0 / 12 章完成</small></div></div><nav id="chapter-nav" aria-label="课程章节"></nav></aside>
+        <article class="chapter-article" id="chapter-article"></article>
+        <aside class="article-aside"><div class="sticky-aside"><p class="eyebrow">IN THIS CHAPTER</p><nav id="section-toc" class="section-toc"></nav><div class="aside-rule"></div><p class="eyebrow">ATOMIC TOPICS</p><div id="chapter-topics" class="chapter-topics"></div></div></aside>
       </div>
     </section>
 
-    <section id="curriculum" class="section curriculum shell">
-      <div class="section-heading"><p class="kicker">THE CURRICULUM</p><h2>从第一性原理，走到生产系统。</h2><p>这不是名词清单。每个课次都给出为什么学、底层机制、动手实验、源码阅读路径和可验证的完成标准。进度保存在当前浏览器。</p></div>
-      <div class="study-toolbar"><label class="search-box"><span>⌕</span><input id="lesson-search" type="search" placeholder="搜索课次、概念或技术…" aria-label="搜索课程" /></label><span id="progress-label" class="progress-label">0 / 45 已完成</span></div>
-      <div class="curriculum-layout">
-        <aside class="module-nav" id="module-nav" aria-label="课程模块"></aside>
-        <div class="lesson-nav" id="lesson-nav" aria-label="当前阶段课次"></div>
-        <article class="module-detail" id="module-detail"></article>
+    <section class="view" id="view-glossary" data-view-panel="glossary">
+      <div class="library-shell">
+        <header class="library-header"><div><p class="eyebrow">CONCEPT LIBRARY / <span id="glossary-count">70</span> ENTRIES</p><h1>Agent 技术概念辞典</h1><p>不是一句话释义：每个词条都包含底层机制、实现路径、局限、优化方向和关联知识。</p></div><label class="inline-search"><span>⌕</span><input id="glossary-search" type="search" placeholder="检索概念与实现细节…" /></label></header>
+        <div class="filter-row" id="glossary-filters"></div>
+        <div class="glossary-layout"><div class="glossary-index" id="glossary-index"></div><article class="concept-article" id="concept-article"></article></div>
       </div>
     </section>
 
-    <section id="textbook" class="section textbook shell">
-      <div class="section-heading"><p class="kicker">THE TEXTBOOK</p><h2>先读懂，再动手，再读源码。</h2><p>这里是连续阅读的技术正文。章节中的架构图、流程图和代码片段解释“为什么这样设计”，课程阅读器负责把它拆成一课一课的练习。</p></div>
-      <div class="book-layout"><aside class="book-nav" id="book-nav" aria-label="教材章节"></aside><article class="book-detail" id="book-detail"></article></div>
-    </section>
-
-    <section class="section source-map shell">
-      <div class="section-heading"><p class="kicker">SOURCE MAP</p><h2>不要只学 API，也要学它们怎么实现。</h2><p>进入源码阶段后，沿着“公共 API → 类型协议 → 执行器 → 持久化/调度”的顺序阅读。</p></div>
-      <div class="source-grid" id="source-grid"></div>
-    </section>
-
-    <section id="projects" class="section projects shell">
-      <div class="section-heading"><p class="kicker">BUILD TO LEARN</p><h2>用五个项目，把知识变成肌肉记忆。</h2></div>
-      <div class="project-list">
-        <article><span>01</span><div><h3>工具调用助手</h3><p>一个能查询天气、计算汇率、解释工具结果的最小 Agent。</p></div><b>基础</b></article>
-        <article><span>02</span><div><h3>文档问答系统</h3><p>支持 PDF/Markdown、来源引用、无答案拒答和检索调试。</p></div><b>RAG</b></article>
-        <article><span>03</span><div><h3>跨会话个人助手</h3><p>区分短期记忆、长期记忆与外部事实，并支持记忆删除。</p></div><b>Memory</b></article>
-        <article><span>04</span><div><h3>可恢复研究 Agent</h3><p>用 LangGraph 编排搜索、摘要、验证、重试和人工中断。</p></div><b>Graph</b></article>
-        <article class="project-final"><span>05</span><div><h3>企业知识与工单助手</h3><p>知识问答、SQL 查询、工单创建、权限控制、人工确认、Trace 与评估。</p></div><b>毕业项目</b></article>
+    <section class="view" id="view-projects" data-view-panel="projects">
+      <div class="projects-shell">
+        <header class="library-header project-header"><div><p class="eyebrow">SOURCE-BASED CASE STUDIES</p><h1>优秀项目源码解剖</h1><p>沿着入口、协议、执行循环、状态与持久化阅读；解释每个模块为什么存在，而不只展示如何调用 API。</p></div><div class="evidence-note"><span>证据边界</span><p>开源项目基于源码与官方文档；Claude Code 明确标为闭源产品，只分析公开架构。</p></div></header>
+        <div class="project-layout"><aside class="project-index" id="project-index"></aside><article class="project-article" id="project-article"></article><aside class="compare-panel" id="compare-panel"></aside></div>
       </div>
-    </section>
-
-    <section class="section practice shell">
-      <div class="practice-card"><div><p class="kicker">THE RULE</p><h2>不要只看最终答案。</h2><p>学习 Agent 时，真正需要观察的是：模型看到了什么、调用了什么、状态如何变化、为什么停止，以及失败后发生了什么。</p></div><div class="trace-box"><span>trace / 001</span><p>model → tool → state → model</p><small>每一次实验都留下证据。</small></div></div>
     </section>
   </main>
 
-  <footer class="footer shell"><span>Agent Field Notes / Open learning repo</span><a href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">在 GitHub 上继续学习 ↗</a></footer>
-  <script src="course-data.js"></script>
-  <script src="textbook-data.js"></script>
+  <div class="mobile-bar" aria-label="移动端导航"><button data-view="map" class="active">地图</button><button data-view="course">课程</button><button data-view="glossary">辞典</button><button data-view="projects">源码</button></div>
+  <footer><span>Agent Systems Manual</span><span>内容以官方文档、论文和源码为依据 · <a href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">共同维护 ↗</a></span></footer>
+
+  <script src="knowledge-data.js"></script>
+  <script src="chapters-data.js"></script>
+  <script src="projects-data.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <script src="app.js"></script>
 </body>
