@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="从 LLM 基础到 LangChain、LangGraph 与生产级 Agent 的系统学习路径。" />
+  <title>Agent Field Notes · AI Agent 学习地图</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#top"><span class="brand-mark">◎</span> Agent Field Notes</a>
+    <nav aria-label="主导航">
+      <a href="#roadmap">路线</a>
+      <a href="#curriculum">课程</a>
+      <a href="#projects">项目</a>
+    </nav>
+    <a class="github-link" href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">GitHub ↗</a>
+  </header>
+
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-copy">
+        <p class="kicker">AI AGENT / FIELD GUIDE 01</p>
+        <h1>把模型，<br /><em>变成能工作的系统。</em></h1>
+        <p class="hero-intro">一条从 LLM 原理出发，经过 Prompt、RAG、Agent、Memory，最后走到 LangGraph 与生产工程的实践路线。</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#curriculum">开始第一课</a>
+          <a class="text-link" href="#projects">查看项目地图 <span>→</span></a>
+        </div>
+      </div>
+      <div class="hero-orbit" aria-label="Agent 核心构成示意图">
+        <div class="orbit orbit-one"></div><div class="orbit orbit-two"></div>
+        <div class="core"><span>AGENT</span><strong>会感知<br />会行动</strong></div>
+        <span class="orbit-label label-model">model</span><span class="orbit-label label-tools">tools</span>
+        <span class="orbit-label label-state">state</span><span class="orbit-label label-loop">loop</span>
+      </div>
+    </section>
+
+    <section class="signal-strip shell" aria-label="学习目标">
+      <div><span class="signal-number">10</span><span>周学习路线</span></div>
+      <div><span class="signal-number">05</span><span>个递进项目</span></div>
+      <div><span class="signal-number">01</span><span>个生产级毕业项目</span></div>
+      <div class="signal-note">每一章都有可验证的产出<br />不靠“看过”判断学会。</div>
+    </section>
+
+    <section id="roadmap" class="section shell">
+      <div class="section-heading"><p class="kicker">THE MAP</p><h2>先看全貌，再进入细节。</h2><p>学习顺序按照系统复杂度递增。每一层都建立在上一层的可观察结果之上。</p></div>
+      <div class="map-grid">
+        <article class="map-card map-foundation"><span class="map-index">01</span><h3>基础能力</h3><p>Model · Message · Tool calling</p><div class="map-line"></div><strong>理解模型在做什么</strong></article>
+        <article class="map-card map-knowledge"><span class="map-index">02</span><h3>知识能力</h3><p>Prompt · Embedding · RAG</p><div class="map-line"></div><strong>让回答有依据</strong></article>
+        <article class="map-card map-action"><span class="map-index">03</span><h3>行动能力</h3><p>Agent · Memory · Middleware</p><div class="map-line"></div><strong>让系统能完成任务</strong></article>
+        <article class="map-card map-control"><span class="map-index">04</span><h3>工程能力</h3><p>Loop · Graph · Eval · Deploy</p><div class="map-line"></div><strong>让行为可控、可复盘</strong></article>
+      </div>
+    </section>
+
+    <section id="curriculum" class="section curriculum shell">
+      <div class="section-heading"><p class="kicker">THE CURRICULUM</p><h2>八个模块，逐层搭建能力。</h2><p>点击模块查看学习目标、关键概念、实践任务与验收标准。完成后勾选，进度会保存在当前浏览器。</p></div>
+      <div class="curriculum-layout">
+        <aside class="module-nav" id="module-nav" aria-label="课程模块"></aside>
+        <div class="module-detail" id="module-detail"></div>
+      </div>
+    </section>
+
+    <section id="projects" class="section projects shell">
+      <div class="section-heading"><p class="kicker">BUILD TO LEARN</p><h2>用五个项目，把知识变成肌肉记忆。</h2></div>
+      <div class="project-list">
+        <article><span>01</span><div><h3>工具调用助手</h3><p>一个能查询天气、计算汇率、解释工具结果的最小 Agent。</p></div><b>基础</b></article>
+        <article><span>02</span><div><h3>文档问答系统</h3><p>支持 PDF/Markdown、来源引用、无答案拒答和检索调试。</p></div><b>RAG</b></article>
+        <article><span>03</span><div><h3>跨会话个人助手</h3><p>区分短期记忆、长期记忆与外部事实，并支持记忆删除。</p></div><b>Memory</b></article>
+        <article><span>04</span><div><h3>可恢复研究 Agent</h3><p>用 LangGraph 编排搜索、摘要、验证、重试和人工中断。</p></div><b>Graph</b></article>
+        <article class="project-final"><span>05</span><div><h3>企业知识与工单助手</h3><p>知识问答、SQL 查询、工单创建、权限控制、人工确认、Trace 与评估。</p></div><b>毕业项目</b></article>
+      </div>
+    </section>
+
+    <section class="section practice shell">
+      <div class="practice-card"><div><p class="kicker">THE RULE</p><h2>不要只看最终答案。</h2><p>学习 Agent 时，真正需要观察的是：模型看到了什么、调用了什么、状态如何变化、为什么停止，以及失败后发生了什么。</p></div><div class="trace-box"><span>trace / 001</span><p>model → tool → state → model</p><small>每一次实验都留下证据。</small></div></div>
+    </section>
+  </main>
+
+  <footer class="footer shell"><span>Agent Field Notes / Open learning repo</span><a href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">在 GitHub 上继续学习 ↗</a></footer>
+  <script src="app.js"></script>
+</body>
+</html>
