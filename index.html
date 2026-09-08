@@ -6,6 +6,8 @@
   <meta name="description" content="从第一性原理到生产实现的 AI Agent 技术课程、概念辞典与开源项目源码解读。" />
   <meta name="theme-color" content="#0b1728" />
   <title>Agent Systems Manual · AI Agent 技术课程</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="mask-icon" href="favicon.svg" color="#1769ff" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
@@ -13,10 +15,11 @@
 </head>
 <body>
   <header class="topbar">
-    <a class="brand" href="#map" aria-label="返回技术地图"><span class="brand-sigil">A/</span><span><strong>Agent Systems</strong><small>技术手册 · v2.0</small></span></a>
+    <a class="brand" href="#map" aria-label="返回技术地图"><span class="brand-sigil" aria-hidden="true"><img src="favicon.svg" alt="" /></span><span><strong>Agent Systems</strong><small>技术手册 · v2.1</small></span></a>
     <nav class="primary-nav" aria-label="主导航">
       <button class="nav-item active" data-view="map">技术地图</button>
       <button class="nav-item" data-view="course">系统课程</button>
+      <button class="nav-item" data-view="labs">实战实验</button>
       <button class="nav-item" data-view="glossary">概念辞典</button>
       <button class="nav-item" data-view="projects">源码解剖</button>
     </nav>
@@ -26,8 +29,8 @@
   <div class="search-layer" id="search-layer" hidden>
     <div class="search-dialog" role="dialog" aria-modal="true" aria-label="全站搜索">
       <div class="search-input-row"><span>⌕</span><input id="global-search" type="search" placeholder="搜索 Token、RAG、checkpoint、OpenClaw…" autocomplete="off" /><button id="search-close" aria-label="关闭搜索">ESC</button></div>
-      <div class="search-hint" id="search-hint">输入关键词，检索 70 个技术点、12 章课程与 11 个项目案例。</div>
-      <div class="search-results" id="search-results"></div>
+      <div class="search-hint" id="search-hint">输入关键词，检索技术点、课程、实验与项目案例。</div>
+      <div class="search-results" id="search-results" role="listbox" aria-label="搜索结果"></div>
     </div>
   </div>
 
@@ -65,6 +68,14 @@
       </div>
     </section>
 
+    <section class="view" id="view-labs" data-view-panel="labs">
+      <div class="labs-shell">
+        <header class="library-header"><div><p class="eyebrow">LEARN BY BUILDING / PYTHON FIRST</p><h1>从原理到可验证实现</h1><p>每个实验先定义可验证的运行时契约，再独立实现；已有参考实现的实验可直接运行，设计实验会逐步补齐测试。</p></div><div class="evidence-note"><span>运行约定</span><p>实验不依赖模型密钥；使用标准库和确定性假模型，先验证控制逻辑，再接入真实 provider。</p></div></header>
+        <div class="lab-path" id="lab-path"></div>
+        <div class="lab-layout"><aside class="lab-index" id="lab-index"></aside><article class="lab-article" id="lab-article"></article></div>
+      </div>
+    </section>
+
     <section class="view" id="view-projects" data-view-panel="projects">
       <div class="projects-shell">
         <header class="library-header project-header"><div><p class="eyebrow">SOURCE-BASED CASE STUDIES</p><h1>优秀项目源码解剖</h1><p>沿着入口、协议、执行循环、状态与持久化阅读；解释每个模块为什么存在，而不只展示如何调用 API。</p></div><div class="evidence-note"><span>证据边界</span><p>开源项目基于源码与官方文档；Claude Code 明确标为闭源产品，只分析公开架构。</p></div></header>
@@ -73,12 +84,13 @@
     </section>
   </main>
 
-  <div class="mobile-bar" aria-label="移动端导航"><button data-view="map" class="active">地图</button><button data-view="course">课程</button><button data-view="glossary">辞典</button><button data-view="projects">源码</button></div>
+  <div class="mobile-bar" aria-label="移动端导航"><button data-view="map" class="active">地图</button><button data-view="course">课程</button><button data-view="labs">实验</button><button data-view="glossary">辞典</button><button data-view="projects">源码</button></div>
   <footer><span>Agent Systems Manual</span><span>内容以官方文档、论文和源码为依据 · <a href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">共同维护 ↗</a></span></footer>
 
   <script src="knowledge-data.js"></script>
   <script src="chapters-data.js"></script>
   <script src="projects-data.js"></script>
+  <script src="labs-data.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <script src="app.js"></script>
 </body>

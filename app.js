@@ -5,9 +5,14 @@ const progress = JSON.parse(localStorage.getItem('agent-systems-progress') || '{
 
 let activeView = 'map';
 let activeTopic = KNOWLEDGE_TOPICS[0].id;
-let activeDomain = 'all';
+let activeMapDomain = 'all';
+let activeGlossaryDomain = 'all';
 let activeChapter = COURSE_CHAPTERS[0].id;
 let activeProject = PROJECT_CASES[0].id;
+let activeLab = LABS[0].id;
+let mobileInspectorOpen = false;
+let searchSelection = -1;
+let lastSearchTrigger = null;
 
 const RELATION_LINKS = {
   langchain: ['langgraph'], langgraph: ['langchain'], llamaindex: ['haystack'], haystack: ['llamaindex'],
@@ -60,7 +65,11 @@ function bindConceptLinks(root, targetView = 'glossary') {
 function setView(view) {
   activeView = view;
   document.querySelectorAll('[data-view-panel]').forEach(panel => panel.classList.toggle('active', panel.dataset.viewPanel === view));
-  document.querySelectorAll('[data-view]').forEach(button => button.classList.toggle('active', button.dataset.view === view));
+  document.querySelectorAll('[data-view]').forEach(button => {
+    const selected = button.dataset.view === view;
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-current', selected ? 'page' : 'false');
+  });
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
@@ -72,12 +81,12 @@ function renderMap() {
   const rail = document.querySelector('#domain-rail');
   rail.innerHTML = TECH_DOMAINS.map((domain, index) => {
     const count = KNOWLEDGE_TOPICS.filter(topic => topic.domain === domain.id).length;
-    return `<button class="domain-link ${activeDomain === domain.id ? 'active' : ''}" style="--domain:${domain.color}" data-domain="${domain.id}"><span>${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(shortDomainName(domain))}</strong><small>${count}</small></button>`;
+    return `<button class="domain-link ${activeMapDomain === domain.id ? 'active' : ''}" style="--domain:${domain.color}" data-domain="${domain.id}"><span>${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(shortDomainName(domain))}</strong><small>${count}</small></button>`;
   }).join('');
   rail.querySelectorAll('[data-domain]').forEach(button => button.addEventListener('click', () => {
-    activeDomain = button.dataset.domain;
+    activeMapDomain = button.dataset.domain;
     renderMap();
-    document.querySelector(`#domain-${activeDomain}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.querySelector(`#domain-${activeMapDomain}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
 
   document.querySelector('#domain-map').innerHTML = TECH_DOMAINS.map((domain, index) => {
@@ -87,7 +96,7 @@ function renderMap() {
       <div class="topic-nodes">${topics.map((topic, topicIndex) => `<button class="topic-node ${topic.id === activeTopic ? 'active' : ''}" data-map-topic="${topic.id}"><span>${domain.id} / ${String(topicIndex + 1).padStart(2, '0')}</span><strong>${escapeHtml(topic.name)}</strong><small>${escapeHtml(topic.definition)}</small></button>`).join('')}</div>
     </section>`;
   }).join('');
-  document.querySelectorAll('[data-map-topic]').forEach(button => button.addEventListener('click', () => { location.hash = `topic/${button.dataset.mapTopic}`; }));
+  document.querySelectorAll('[data-map-topic]').forEach(button => button.addEventListener('click', () => { mobileInspectorOpen = true; location.hash = `topic/${button.dataset.mapTopic}`; }));
   renderMapInspector();
 }
 
@@ -104,8 +113,8 @@ function renderMapInspector() {
     <section class="topic-section improve"><h3>优化方向</h3><p>${escapeHtml(topic.improve)}</p></section>
     <section class="topic-section"><h3>关联知识</h3><div class="tag-list">${topic.related.map(id => topicButton(id)).join('')}</div></section>
     <section class="topic-section"><h3>一手资料</h3>${sourceLinks(topic.sources)}</section>`;
-  inspector.classList.add('open');
-  inspector.querySelector('.inspector-close').addEventListener('click', () => inspector.classList.remove('open'));
+  inspector.classList.toggle('open', !window.matchMedia('(max-width: 980px)').matches || mobileInspectorOpen);
+  inspector.querySelector('.inspector-close').addEventListener('click', () => { mobileInspectorOpen = false; inspector.classList.remove('open'); });
   bindConceptLinks(inspector, 'map');
 }
 
@@ -163,16 +172,19 @@ function conceptArticle(topic) {
 
 function renderGlossary() {
   const filters = document.querySelector('#glossary-filters');
-  filters.innerHTML = `<button class="filter-button ${activeDomain === 'all' ? 'active' : ''}" data-filter="all">全部 · ${KNOWLEDGE_TOPICS.length}</button>${TECH_DOMAINS.map(domain => `<button class="filter-button ${activeDomain === domain.id ? 'active' : ''}" data-filter="${domain.id}">${escapeHtml(shortDomainName(domain))} · ${KNOWLEDGE_TOPICS.filter(topic => topic.domain === domain.id).length}</button>`).join('')}`;
-  filters.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { activeDomain = button.dataset.filter; renderGlossary(); }));
+  filters.innerHTML = `<button class="filter-button ${activeGlossaryDomain === 'all' ? 'active' : ''}" data-filter="all">全部 · ${KNOWLEDGE_TOPICS.length}</button>${TECH_DOMAINS.map(domain => `<button class="filter-button ${activeGlossaryDomain === domain.id ? 'active' : ''}" data-filter="${domain.id}">${escapeHtml(shortDomainName(domain))} · ${KNOWLEDGE_TOPICS.filter(topic => topic.domain === domain.id).length}</button>`).join('')}`;
+  filters.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { activeGlossaryDomain = button.dataset.filter; renderGlossary(); }));
   const query = document.querySelector('#glossary-search').value.trim().toLowerCase();
-  const topics = KNOWLEDGE_TOPICS.filter(topic => (activeDomain === 'all' || topic.domain === activeDomain) && (!query || Object.values(topic).flat().join(' ').toLowerCase().includes(query)));
+  const domainRank = Object.fromEntries(TECH_DOMAINS.map((domain, index) => [domain.id, index]));
+  const matchRank = topic => !query ? 1 : topic.name.toLowerCase() === query ? 100 : topic.name.toLowerCase().startsWith(query) ? 80 : topic.id.includes(query) ? 70 : JSON.stringify(topic).toLowerCase().includes(query) ? 20 : 0;
+  const topics = KNOWLEDGE_TOPICS.filter(topic => (activeGlossaryDomain === 'all' || topic.domain === activeGlossaryDomain) && matchRank(topic)).sort((a, b) => matchRank(b) - matchRank(a) || domainRank[a.domain] - domainRank[b.domain]);
   if (topics.length && !topics.some(topic => topic.id === activeTopic)) activeTopic = topics[0].id;
   document.querySelector('#glossary-index').innerHTML = topics.length ? topics.map(topic => {
     const domain = domainFor(topic);
     return `<button class="glossary-card ${topic.id === activeTopic ? 'active' : ''}" style="--topic-color:${domain.color}" data-glossary-topic="${topic.id}"><span>${escapeHtml(shortDomainName(domain))}</span><strong>${escapeHtml(topic.name)}</strong><small>${escapeHtml(topic.definition)}</small></button>`;
   }).join('') : '<div class="empty-result">没有匹配的概念。试试“状态”“检索”或“权限”。</div>';
   document.querySelectorAll('[data-glossary-topic]').forEach(button => button.addEventListener('click', () => { location.hash = `concept/${button.dataset.glossaryTopic}`; }));
+  if (!topics.length) { document.querySelector('#concept-article').innerHTML = '<div class="empty-detail"><h2>没有匹配的词条</h2><p>试试英文术语、实现名或更短的关键词。</p></div>'; return; }
   renderConceptArticle();
 }
 
@@ -209,16 +221,32 @@ function renderProject() {
 
 function renderProjects() { renderProjectIndex(); renderProject(); }
 
+function renderLabs() {
+  const lab = LAB_BY_ID[activeLab] || LABS[0];
+  document.querySelector('#lab-path').innerHTML = LABS.map(item => `<button class="lab-path-step ${item.id === lab.id ? 'active' : ''}" data-lab="${item.id}">${item.number}</button>`).join('');
+  document.querySelector('#lab-index').innerHTML = LABS.map(item => `<button class="lab-tab ${item.id === lab.id ? 'active' : ''}" data-lab="${item.id}"><span>LAB ${item.number}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.chapter)}</small></button>`).join('');
+  document.querySelector('#lab-article').innerHTML = `<header class="lab-detail-head"><p class="eyebrow">LAB ${lab.number} / ${escapeHtml(lab.chapter)}</p><h1>${escapeHtml(lab.title)}</h1><p>${escapeHtml(lab.goal)}</p></header><section class="project-section"><h2>你将建立的能力</h2><div class="tag-list">${lab.concepts.map(name => `<span class="tag-button">${escapeHtml(name)}</span>`).join('')}</div></section><section class="project-section"><h2>运行与验证</h2><pre><code>cd ai-agent-learning\n${escapeHtml(lab.commands.join('\n'))}</code></pre><h3>验收标准</h3><ul class="decision-list">${lab.checks.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section><section class="project-section"><h2>学习顺序</h2><ol class="flow-list"><li>先阅读实验说明和失败场景。</li><li>运行测试，观察约束的可执行定义。</li><li>修改实现使一个测试失败，再解释为什么它是安全边界。</li><li>最后把相同契约映射回课程和开源项目。</li></ol></section><a class="lab-source-link" href="https://github.com/Serendipity-zsh/ai-agent-learning/blob/main/labs/${escapeHtml(lab.source)}" target="_blank" rel="noreferrer">阅读实验说明与源码 ↗</a>`;
+  document.querySelectorAll('[data-lab]').forEach(button => button.addEventListener('click', () => { location.hash = `lab/${button.dataset.lab}`; }));
+}
+
 function searchCorpus(query) {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const topics = KNOWLEDGE_TOPICS.filter(item => JSON.stringify(item).toLowerCase().includes(q)).map(item => ({ kind: '概念', id: item.id, title: item.name, summary: item.definition, hash: `concept/${item.id}` }));
-  const chapters = COURSE_CHAPTERS.filter(item => JSON.stringify(item).toLowerCase().includes(q)).map(item => ({ kind: '课程', id: item.id, title: `${item.number} · ${item.title}`, summary: item.thesis, hash: `chapter/${item.id}` }));
-  const projects = PROJECT_CASES.filter(item => JSON.stringify(item).toLowerCase().includes(q)).map(item => ({ kind: '源码', id: item.id, title: item.name, summary: item.positioning, hash: `project/${item.id}` }));
-  return [...topics, ...chapters, ...projects].slice(0, 40);
+  const makeResults = (items, kind, title, summary, hash) => items.map(item => {
+    const heading = title(item).toLowerCase(); const id = item.id.toLowerCase(); const body = JSON.stringify(item).toLowerCase();
+    const score = heading === q ? 100 : id === q ? 96 : heading.startsWith(q) ? 84 : id.startsWith(q) ? 78 : body.includes(q) ? 20 : 0;
+    return score ? { kind, id: item.id, title: title(item), summary: summary(item), hash: hash(item), score } : null;
+  }).filter(Boolean);
+  return [
+    ...makeResults(KNOWLEDGE_TOPICS, '概念', item => item.name, item => item.definition, item => `concept/${item.id}`),
+    ...makeResults(COURSE_CHAPTERS, '课程', item => `${item.number} · ${item.title}`, item => item.thesis, item => `chapter/${item.id}`),
+    ...makeResults(PROJECT_CASES, '源码', item => item.name, item => item.positioning, item => `project/${item.id}`),
+    ...makeResults(LABS, '实验', item => item.title, item => item.goal, item => `lab/${item.id}`)
+  ].sort((a, b) => b.score - a.score || a.kind.localeCompare(b.kind, 'zh-CN')).slice(0, 40);
 }
 
 function openSearch(initial = '') {
+  lastSearchTrigger = document.activeElement;
   const layer = document.querySelector('#search-layer');
   layer.hidden = false;
   const input = document.querySelector('#global-search');
@@ -227,23 +255,25 @@ function openSearch(initial = '') {
   requestAnimationFrame(() => input.focus());
 }
 
-function closeSearch() { document.querySelector('#search-layer').hidden = true; }
+function closeSearch() { document.querySelector('#search-layer').hidden = true; lastSearchTrigger?.focus?.(); }
 
 function renderSearchResults() {
   const input = document.querySelector('#global-search');
   const results = searchCorpus(input.value);
-  document.querySelector('#search-hint').textContent = input.value.trim() ? `找到 ${results.length} 条结果（最多显示 40 条）` : `输入关键词，检索 ${KNOWLEDGE_TOPICS.length} 个技术点、${COURSE_CHAPTERS.length} 章课程与 ${PROJECT_CASES.length} 个项目案例。`;
-  document.querySelector('#search-results').innerHTML = results.map(result => `<button class="search-result" data-result-hash="${result.hash}"><span>${result.kind}</span><span><strong>${escapeHtml(result.title)}</strong><small>${escapeHtml(result.summary)}</small></span></button>`).join('');
+  document.querySelector('#search-hint').textContent = input.value.trim() ? `找到 ${results.length} 条结果，标题精确命中优先显示。` : `输入关键词，检索 ${KNOWLEDGE_TOPICS.length} 个技术点、${COURSE_CHAPTERS.length} 章课程、${LABS.length} 个实验与 ${PROJECT_CASES.length} 个项目案例。`;
+  searchSelection = results.length ? 0 : -1;
+  document.querySelector('#search-results').innerHTML = results.length ? results.map((result, index) => `<button class="search-result ${index === 0 ? 'selected' : ''}" role="option" aria-selected="${index === 0}" data-result-hash="${result.hash}"><span>${result.kind}</span><span><strong>${escapeHtml(result.title)}</strong><small>${escapeHtml(result.summary)}</small></span></button>`).join('') : '<p class="empty-search">没有匹配结果。请改用更短关键词或英文实现名。</p>';
   document.querySelectorAll('[data-result-hash]').forEach(button => button.addEventListener('click', () => { closeSearch(); location.hash = button.dataset.resultHash; }));
 }
 
 function route() {
   const [kind = 'map', id] = location.hash.replace(/^#/, '').split('/');
   if (kind === 'topic' && TOPIC_BY_ID[id]) { activeTopic = id; setView('map'); renderMap(); return; }
-  if (kind === 'concept' && TOPIC_BY_ID[id]) { activeTopic = id; activeDomain = 'all'; setView('glossary'); renderGlossary(); return; }
+  if (kind === 'concept' && TOPIC_BY_ID[id]) { activeTopic = id; activeGlossaryDomain = 'all'; setView('glossary'); renderGlossary(); return; }
   if (kind === 'chapter' && CHAPTER_BY_ID[id]) { activeChapter = id; setView('course'); renderCourse(); return; }
+  if (kind === 'lab' && LAB_BY_ID[id]) { activeLab = id; setView('labs'); renderLabs(); return; }
   if (kind === 'project' && PROJECT_BY_ID[id]) { activeProject = id; setView('projects'); renderProjects(); return; }
-  if (['map', 'course', 'glossary', 'projects'].includes(kind)) { setView(kind); if (kind === 'map') renderMap(); if (kind === 'course') renderCourse(); if (kind === 'glossary') renderGlossary(); if (kind === 'projects') renderProjects(); return; }
+  if (['map', 'course', 'labs', 'glossary', 'projects'].includes(kind)) { setView(kind); if (kind === 'map') renderMap(); if (kind === 'course') renderCourse(); if (kind === 'labs') renderLabs(); if (kind === 'glossary') renderGlossary(); if (kind === 'projects') renderProjects(); return; }
   location.hash = 'map';
 }
 
@@ -255,7 +285,15 @@ document.querySelector('#global-search').addEventListener('input', renderSearchR
 document.querySelector('#glossary-search').addEventListener('input', renderGlossary);
 document.addEventListener('keydown', event => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openSearch(); }
-  if (event.key === 'Escape') closeSearch();
+  const open = !document.querySelector('#search-layer').hidden;
+  if (event.key === 'Escape' && open) closeSearch();
+  if (!open || !['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
+  const items = [...document.querySelectorAll('.search-result')];
+  if (event.key === 'Enter' && searchSelection >= 0) { event.preventDefault(); items[searchSelection]?.click(); return; }
+  event.preventDefault();
+  searchSelection = event.key === 'ArrowDown' ? Math.min(searchSelection + 1, items.length - 1) : Math.max(searchSelection - 1, 0);
+  items.forEach((item, index) => { const selected = index === searchSelection; item.classList.toggle('selected', selected); item.setAttribute('aria-selected', selected); });
+  items[searchSelection]?.scrollIntoView({ block: 'nearest' });
 });
 window.addEventListener('hashchange', route);
 
