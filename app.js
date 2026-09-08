@@ -219,6 +219,7 @@ function renderProjectIndex() {
 function renderProject() {
   const project = PROJECT_BY_ID[activeProject] || PROJECT_CASES[0];
   const reading = PROJECT_SOURCE_READINGS[project.id];
+  const trace = PROJECT_SOURCE_TRACES[project.id];
   const article = document.querySelector('#project-article');
   article.innerHTML = `<header class="project-title-row"><div><p class="eyebrow">${escapeHtml(project.category)} / ARCHITECTURE</p><h1>${escapeHtml(project.name)}</h1><p>${escapeHtml(project.relations)}</p></div><span class="status-badge">${escapeHtml(project.status)}</span></header>
     <div class="project-positioning"><strong>项目定位：</strong>${escapeHtml(project.positioning)}</div>
@@ -228,11 +229,16 @@ function renderProject() {
     <section class="project-section"><h2>关键设计决策</h2><ul class="decision-list">${project.decisions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section>
     <section class="project-section"><div class="risk-grid"><div class="risk-box"><h3>LIMITATIONS / 局限</h3><ul>${project.limits.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div><div class="risk-box improvement"><h3>NEXT / 优化方向</h3><ul>${project.improve.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div></div></section>
     ${reading ? `<section class="project-section source-reading"><h2>固定源码快照与调用链</h2><p><strong>阅读链：</strong>${escapeHtml(reading.chain)}</p><p class="source-ref">${escapeHtml(reading.ref)}。快照用于本课程定位；学习时如切换到新版，请重新核验路径与行为。</p><div class="reading-files">${reading.files.map(file => `<a href="${escapeHtml(file[2])}" target="_blank" rel="noreferrer"><strong>${escapeHtml(file[0])}</strong><code>${escapeHtml(file[1])}</code><span>${escapeHtml(file[3])}</span></a>`).join('')}</div></section>` : ''}
+    ${trace ? renderProjectTrace(trace) : ''}
     <section class="project-section"><h2>源码与官方资料</h2>${sourceLinks(project.sources)}</section>`;
   const related = (RELATION_LINKS[project.id] || []).map(id => PROJECT_BY_ID[id]).filter(Boolean);
   document.querySelector('#compare-panel').innerHTML = `<p class="eyebrow">RELATIONSHIP</p><h2>它与其他项目的关系</h2><div class="relation-card"><p>${escapeHtml(project.relations)}</p></div>${related.length ? `<div class="compare-links"><span class="eyebrow">继续对照阅读</span>${related.map(item => `<button data-related-project="${item.id}"><strong>${escapeHtml(item.name)}</strong><br />${escapeHtml(item.category)}</button>`).join('')}</div>` : ''}<div class="relation-card"><p><strong>推荐阅读顺序：</strong><br />先看定位与架构，再沿模块路径进入源码，最后用请求流程验证自己的理解。</p></div>`;
   document.querySelectorAll('[data-related-project]').forEach(button => button.addEventListener('click', () => { location.hash = `project/${button.dataset.relatedProject}`; }));
   renderMermaid(article);
+}
+
+function renderProjectTrace(trace) {
+  return `<section class="project-section source-trace"><header><p class="eyebrow">CODE WALKTHROUGH / TRACE THE RUNTIME</p><h2>${escapeHtml(trace.title)}</h2><p>${escapeHtml(trace.question)}</p></header><section><h3>先画出运行时数据</h3><ul class="state-list">${trace.state.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section><section><h3>按调用链阅读</h3><div class="trace-steps">${trace.steps.map((step, index) => `<article><span>${String(index + 1).padStart(2, '0')}</span><div><h4>${escapeHtml(step[0])}</h4><p><strong>读：</strong>${escapeHtml(step[1])}</p><p><strong>变：</strong>${escapeHtml(step[2])}</p><p class="trace-invariant"><strong>不变量：</strong>${escapeHtml(step[3])}</p></div></article>`).join('')}</div></section><section><h3>你应该亲手验证的测试</h3><ol class="flow-list">${trace.tests.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ol></section><section class="trace-compare"><h3>与其他项目的边界差异</h3><p>${escapeHtml(trace.compare)}</p></section></section>`;
 }
 
 function renderProjects() { renderProjectIndex(); renderProject(); }

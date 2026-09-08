@@ -253,6 +253,22 @@ pre { margin: 22px 0; padding: 18px 20px; overflow: auto; border: 1px solid #243
 .reading-files strong { color: var(--blue-dark); font-size: 12px; }
 .reading-files code { min-width: 0; color: #5a6c82; font: 10px/1.5 var(--mono); overflow-wrap: anywhere; }
 .reading-files span { grid-column: 2; color: #4b5d72; font-size: 11px; line-height: 1.55; }
+.source-trace { margin: 30px -8px 0; padding: 28px; border: 1px solid #a9bfdc; background: linear-gradient(145deg, #f2f7ff, #fff); }
+.source-trace > header { padding-bottom: 18px; border-bottom: 3px solid var(--blue); }
+.source-trace > header h2 { margin: 0 0 8px; font-size: 25px; line-height: 1.25; }
+.source-trace > header > p:last-child { margin: 0; color: #40536a; font-size: 14px; line-height: 1.75; }
+.source-trace > section { padding: 22px 0; border-bottom: 1px solid var(--line); }
+.source-trace h3 { margin: 0 0 11px; color: #29496b; font-size: 16px; }
+.state-list { margin: 0; padding-left: 20px; }
+.state-list li { margin: 7px 0; color: #35485e; font-size: 13px; }
+.trace-steps { display: grid; gap: 10px; }
+.trace-steps article { display: grid; grid-template-columns: 38px 1fr; gap: 12px; padding: 15px; border: 1px solid var(--line); background: #fff; }
+.trace-steps article > span { display: grid; place-items: center; width: 31px; height: 31px; color: #fff; background: var(--blue); font: 600 10px var(--mono); }
+.trace-steps h4 { margin: 0 0 7px; font-size: 15px; }
+.trace-steps p { margin: 5px 0; color: #40536a; font-size: 12px; line-height: 1.65; }
+.trace-steps .trace-invariant { padding: 7px 9px; color: #4f3b1e; background: #fff7e7; }
+.trace-compare { border-bottom: 0 !important; }
+.trace-compare p { margin: 0; color: #3a4e64; font-size: 13px; line-height: 1.75; }
 
 /* Global search */
 .search-layer { position: fixed; inset: 0; z-index: 100; padding: 10vh 20px 20px; background: rgba(4,13,25,.72); backdrop-filter: blur(5px); }
@@ -393,6 +409,7 @@ footer a { color: #c6d6e8; }
   .source-map { grid-template-columns: 1fr; }
   .reading-files a { grid-template-columns: 1fr; }
   .reading-files span { grid-column: auto; }
+  .source-trace { margin: 28px -3px 0; padding: 21px 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
