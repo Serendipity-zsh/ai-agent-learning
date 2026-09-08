@@ -41,10 +41,10 @@
     </section>
 
     <section class="signal-strip shell" aria-label="学习目标">
-      <div><span class="signal-number">10</span><span>周学习路线</span></div>
-      <div><span class="signal-number">05</span><span>个递进项目</span></div>
+      <div><span class="signal-number" id="module-count">12</span><span>个学习阶段</span></div>
+      <div><span class="signal-number" id="lesson-count">45</span><span>个递进课次</span></div>
       <div><span class="signal-number">01</span><span>个生产级毕业项目</span></div>
-      <div class="signal-note">每一章都有可验证的产出<br />不靠“看过”判断学会。</div>
+      <div class="signal-note">每一课都有原理、实验、源码和验收<br />不靠“看过”判断学会。</div>
     </section>
 
     <section id="roadmap" class="section shell">
@@ -58,11 +58,18 @@
     </section>
 
     <section id="curriculum" class="section curriculum shell">
-      <div class="section-heading"><p class="kicker">THE CURRICULUM</p><h2>八个模块，逐层搭建能力。</h2><p>点击模块查看学习目标、关键概念、实践任务与验收标准。完成后勾选，进度会保存在当前浏览器。</p></div>
+      <div class="section-heading"><p class="kicker">THE CURRICULUM</p><h2>从第一性原理，走到生产系统。</h2><p>这不是名词清单。每个课次都给出为什么学、底层机制、动手实验、源码阅读路径和可验证的完成标准。进度保存在当前浏览器。</p></div>
+      <div class="study-toolbar"><label class="search-box"><span>⌕</span><input id="lesson-search" type="search" placeholder="搜索课次、概念或技术…" aria-label="搜索课程" /></label><span id="progress-label" class="progress-label">0 / 45 已完成</span></div>
       <div class="curriculum-layout">
         <aside class="module-nav" id="module-nav" aria-label="课程模块"></aside>
-        <div class="module-detail" id="module-detail"></div>
+        <div class="lesson-nav" id="lesson-nav" aria-label="当前阶段课次"></div>
+        <article class="module-detail" id="module-detail"></article>
       </div>
+    </section>
+
+    <section class="section source-map shell">
+      <div class="section-heading"><p class="kicker">SOURCE MAP</p><h2>不要只学 API，也要学它们怎么实现。</h2><p>进入源码阶段后，沿着“公共 API → 类型协议 → 执行器 → 持久化/调度”的顺序阅读。</p></div>
+      <div class="source-grid" id="source-grid"></div>
     </section>
 
     <section id="projects" class="section projects shell">
@@ -82,6 +89,7 @@
   </main>
 
   <footer class="footer shell"><span>Agent Field Notes / Open learning repo</span><a href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">在 GitHub 上继续学习 ↗</a></footer>
+  <script src="course-data.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
