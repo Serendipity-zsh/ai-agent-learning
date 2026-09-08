@@ -158,6 +158,28 @@ pre { margin: 22px 0; padding: 18px 20px; overflow: auto; border: 1px solid #243
 .chapter-topic { padding: 5px 7px; border: 1px solid var(--line); background: #f6f8fb; cursor: pointer; font: 9px var(--mono); }
 .chapter-topic:hover { color: var(--blue); border-color: var(--blue); }
 
+/* Implementation deep dives */
+.deep-dive { margin: 54px -10px 0; padding: 32px 30px; border: 1px solid #9bb8df; background: linear-gradient(145deg, #f4f8ff, #fff); }
+.deep-dive > header { padding-bottom: 21px; border-bottom: 4px solid var(--blue); }
+.deep-dive > header h2 { margin: 0 0 10px; font-size: 30px; line-height: 1.22; letter-spacing: -.035em; }
+.deep-dive > header > p:last-child { margin: 0; color: #3e5168; font-size: 15px; line-height: 1.8; }
+.deep-section { padding: 28px 0; border-bottom: 1px solid var(--line); }
+.deep-section h3 { margin: 0 0 13px; color: #2b4666; font-size: 18px; }
+.deep-section > p { margin: 0 0 14px; color: #293a4d; font-size: 15px; line-height: 1.9; }
+.failure-table { overflow-x: auto; border: 1px solid var(--line); background: #fff; }
+.failure-table table { min-width: 620px; width: 100%; border-collapse: collapse; font-size: 12px; }
+.failure-table th, .failure-table td { padding: 11px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.failure-table th { color: #53667d; background: #edf3fb; font: 600 10px var(--mono); }
+.failure-table td:first-child { width: 22%; color: var(--red); font-weight: 600; }
+.drill-list { margin: 0; padding-left: 21px; }
+.drill-list li { margin: 9px 0; font-size: 13px; line-height: 1.7; }
+.answer-key { margin-top: 17px; padding: 13px 15px; border-left: 4px solid var(--green); color: #24513e; background: #edfaf4; font-size: 13px; line-height: 1.7; }
+.source-map { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.source-map article { padding: 14px; border: 1px solid var(--line); background: #fff; }
+.source-map strong { display: block; color: var(--blue-dark); font-size: 14px; }
+.source-map code { display: block; margin: 7px 0; color: #596a80; font: 10px/1.55 var(--mono); white-space: normal; }
+.source-map p { margin: 0; color: #45576d; font-size: 12px; line-height: 1.65; }
+
 /* Libraries */
 .library-shell, .projects-shell { max-width: 1500px; margin: 0 auto; padding: 44px 42px 90px; }
 .library-header { display: flex; align-items: end; justify-content: space-between; gap: 40px; padding-bottom: 30px; border-bottom: 1px solid var(--line-strong); }
@@ -223,6 +245,14 @@ pre { margin: 22px 0; padding: 18px 20px; overflow: auto; border: 1px solid #243
 .compare-links { display: grid; gap: 7px; margin-top: 16px; }
 .compare-links button { padding: 8px; border: 1px solid var(--line); background: #fff; cursor: pointer; text-align: left; font-size: 10px; }
 .compare-links button:hover { border-color: var(--blue); color: var(--blue); }
+.source-reading > p { color: #384b62; font-size: 13px; line-height: 1.75; }
+.source-ref { padding: 10px 12px; border-left: 3px solid var(--amber); background: #fff8e9; font: 11px/1.6 var(--mono); }
+.reading-files { display: grid; gap: 8px; margin-top: 15px; }
+.reading-files a { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 3px 12px; padding: 12px; border: 1px solid var(--line); background: #fbfdff; color: inherit; text-decoration: none; }
+.reading-files a:hover { border-color: var(--blue); background: #f1f6ff; }
+.reading-files strong { color: var(--blue-dark); font-size: 12px; }
+.reading-files code { min-width: 0; color: #5a6c82; font: 10px/1.5 var(--mono); overflow-wrap: anywhere; }
+.reading-files span { grid-column: 2; color: #4b5d72; font-size: 11px; line-height: 1.55; }
 
 /* Global search */
 .search-layer { position: fixed; inset: 0; z-index: 100; padding: 10vh 20px 20px; background: rgba(4,13,25,.72); backdrop-filter: blur(5px); }
@@ -358,6 +388,11 @@ footer a { color: #c6d6e8; }
   .lab-tab.active { box-shadow: inset 0 -3px 0 var(--blue); }
   .lab-article { padding: 30px 20px 70px; }
   .labs-shell { padding: 32px 16px 76px; }
+  .deep-dive { margin: 42px -4px 0; padding: 24px 18px; }
+  .deep-dive > header h2 { font-size: 25px; }
+  .source-map { grid-template-columns: 1fr; }
+  .reading-files a { grid-template-columns: 1fr; }
+  .reading-files span { grid-column: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {

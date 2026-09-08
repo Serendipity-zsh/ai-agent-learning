@@ -1,3 +1,5 @@
 # Lab 06：记忆写入策略
 
-设计事实记忆记录：`value, provenance, confidence, expires_at, version`。实现 ADD/UPDATE/DELETE，并测试低可信 observation 无法覆盖用户确认信息、过期记录不可召回、每个变更带原因。下一轮将提供参考实现与测试。
+运行：`python3 -m unittest labs/06-memory-system/test_memory.py -v`
+
+参考实现聚焦最小写入治理：信任阈值、用户锁定、版本历史与 TTL。它刻意不实现向量检索，因为“是否可写入”应先于“如何相似度召回”。

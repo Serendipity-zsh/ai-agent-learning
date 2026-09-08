@@ -1,3 +1,5 @@
 # Lab 07：图状态与 Checkpoint
 
-实现 `StateGraph` 的最小版本：每个 node 返回 state patch；持久化 snapshot；副作用节点先读取 idempotency key；interrupt 保存 pending state，resume 再推进。这个实验对应 LangGraph checkpoint/interrupt 的关键工程边界。下一轮将提供参考实现与测试。
+运行：`python3 -m unittest labs/07-graph-checkpoint/test_graph_state.py -v`
+
+参考实现展示最重要的一条恢复语义：恢复可以重新进入节点，但使用相同 idempotency key 的 gateway 只能执行一次外部写入。真实 LangGraph 的 checkpointer、thread 与 interrupt 比本实验更完整，但边界相同。

@@ -129,6 +129,7 @@ function renderChapterNav() {
 
 function renderChapter() {
   const chapter = CHAPTER_BY_ID[activeChapter] || COURSE_CHAPTERS[0];
+  const deepDive = DEEP_DIVE_BY_CHAPTER[chapter.id];
   const article = document.querySelector('#chapter-article');
   const index = COURSE_CHAPTERS.findIndex(item => item.id === chapter.id);
   article.innerHTML = `<header class="chapter-header">
@@ -138,6 +139,7 @@ function renderChapter() {
     <section class="objectives"><h2>完成本章后，你应该能够</h2><ul>${chapter.objectives.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section>
     <div class="diagram-shell"><span class="diagram-label">SYSTEM MODEL / 本章系统模型</span><div class="mermaid">${escapeHtml(chapter.diagram)}</div></div>
     ${chapter.sections.map((section, sectionIndex) => `<section class="chapter-section" id="${chapter.id}-section-${sectionIndex}"><h2><span>${String(sectionIndex + 1).padStart(2, '0')}</span>${escapeHtml(section.title)}</h2>${section.paragraphs.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join('')}${section.callout ? `<div class="callout">${escapeHtml(section.callout)}</div>` : ''}${section.diagram ? `<div class="diagram-shell"><div class="mermaid">${escapeHtml(section.diagram)}</div></div>` : ''}${section.code ? `<pre><code>${escapeHtml(section.code)}</code></pre>` : ''}</section>`).join('')}
+    ${deepDive ? renderDeepDive(deepDive) : ''}
     <section class="lab-card"><p class="eyebrow">BUILD / TEST / EXPLAIN</p><h2>${escapeHtml(chapter.lab.title)}</h2><div class="lab-grid"><div><h3>实验步骤</h3><ol>${chapter.lab.steps.map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol></div><div><h3>可验证的验收标准</h3><ul>${chapter.lab.acceptance.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div></div></section>
     <div class="chapter-actions"><button class="pager-button" data-page-chapter="${index > 0 ? COURSE_CHAPTERS[index - 1].id : ''}" ${index > 0 ? '' : 'disabled'}>← 上一章</button><button class="complete-chapter ${progress[chapter.id] ? 'done' : ''}" data-complete-chapter="${chapter.id}">${progress[chapter.id] ? '✓ 本章已完成' : '标记本章完成'}</button><button class="pager-button" data-page-chapter="${index < COURSE_CHAPTERS.length - 1 ? COURSE_CHAPTERS[index + 1].id : ''}" ${index < COURSE_CHAPTERS.length - 1 ? '' : 'disabled'}>下一章 →</button></div>`;
   document.querySelector('#section-toc').innerHTML = chapter.sections.map((section, sectionIndex) => `<button data-section-target="${chapter.id}-section-${sectionIndex}">${escapeHtml(section.title)}</button>`).join('');
@@ -153,6 +155,18 @@ function renderChapter() {
     if (button.dataset.pageChapter) location.hash = `chapter/${button.dataset.pageChapter}`;
   }));
   renderMermaid(article);
+}
+
+function renderDeepDive(dive) {
+  return `<section class="deep-dive"><header><p class="eyebrow">${escapeHtml(dive.label)} / IMPLEMENTATION LAB</p><h2>${escapeHtml(dive.title)}</h2><p>${escapeHtml(dive.premise)}</p></header>
+    <section class="deep-section"><h3>从第一性原理推导</h3>${dive.derivation.map(item => `<p>${escapeHtml(item)}</p>`).join('')}</section>
+    <div class="diagram-shell"><span class="diagram-label">EXECUTION MODEL</span><div class="mermaid">${escapeHtml(dive.model)}</div></div>
+    <section class="deep-section"><h3>最小参考实现</h3><pre><code>${escapeHtml(dive.code)}</code></pre></section>
+    <section class="deep-section"><h3>一次运行的 Trace</h3><ol class="flow-list">${dive.trace.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ol></section>
+    <section class="deep-section"><h3>故障注入与修复</h3><div class="failure-table"><table><thead><tr><th>故障</th><th>它为什么发生</th><th>工程修复</th></tr></thead><tbody>${dive.failures.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>
+    <section class="deep-section"><h3>掌握检查</h3><ol class="drill-list">${dive.drills.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ol><div class="answer-key"><strong>判题标准：</strong>${escapeHtml(dive.answer)}</div></section>
+    <section class="deep-section"><h3>映射到开源实现：按调用链阅读</h3><div class="source-map">${dive.sourceMap.map(row => `<article><strong>${escapeHtml(row[0])}</strong><code>${escapeHtml(row[1])}</code><p>${escapeHtml(row[2])}</p></article>`).join('')}</div></section>
+  </section>`;
 }
 
 function renderCourse() { renderChapterNav(); renderChapter(); }
@@ -204,6 +218,7 @@ function renderProjectIndex() {
 
 function renderProject() {
   const project = PROJECT_BY_ID[activeProject] || PROJECT_CASES[0];
+  const reading = PROJECT_SOURCE_READINGS[project.id];
   const article = document.querySelector('#project-article');
   article.innerHTML = `<header class="project-title-row"><div><p class="eyebrow">${escapeHtml(project.category)} / ARCHITECTURE</p><h1>${escapeHtml(project.name)}</h1><p>${escapeHtml(project.relations)}</p></div><span class="status-badge">${escapeHtml(project.status)}</span></header>
     <div class="project-positioning"><strong>项目定位：</strong>${escapeHtml(project.positioning)}</div>
@@ -212,6 +227,7 @@ function renderProject() {
     <section class="project-section"><h2>一次请求如何流动</h2><ol class="flow-list">${project.flow.map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol></section>
     <section class="project-section"><h2>关键设计决策</h2><ul class="decision-list">${project.decisions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section>
     <section class="project-section"><div class="risk-grid"><div class="risk-box"><h3>LIMITATIONS / 局限</h3><ul>${project.limits.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div><div class="risk-box improvement"><h3>NEXT / 优化方向</h3><ul>${project.improve.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div></div></section>
+    ${reading ? `<section class="project-section source-reading"><h2>固定源码快照与调用链</h2><p><strong>阅读链：</strong>${escapeHtml(reading.chain)}</p><p class="source-ref">${escapeHtml(reading.ref)}。快照用于本课程定位；学习时如切换到新版，请重新核验路径与行为。</p><div class="reading-files">${reading.files.map(file => `<a href="${escapeHtml(file[2])}" target="_blank" rel="noreferrer"><strong>${escapeHtml(file[0])}</strong><code>${escapeHtml(file[1])}</code><span>${escapeHtml(file[3])}</span></a>`).join('')}</div></section>` : ''}
     <section class="project-section"><h2>源码与官方资料</h2>${sourceLinks(project.sources)}</section>`;
   const related = (RELATION_LINKS[project.id] || []).map(id => PROJECT_BY_ID[id]).filter(Boolean);
   document.querySelector('#compare-panel').innerHTML = `<p class="eyebrow">RELATIONSHIP</p><h2>它与其他项目的关系</h2><div class="relation-card"><p>${escapeHtml(project.relations)}</p></div>${related.length ? `<div class="compare-links"><span class="eyebrow">继续对照阅读</span>${related.map(item => `<button data-related-project="${item.id}"><strong>${escapeHtml(item.name)}</strong><br />${escapeHtml(item.category)}</button>`).join('')}</div>` : ''}<div class="relation-card"><p><strong>推荐阅读顺序：</strong><br />先看定位与架构，再沿模块路径进入源码，最后用请求流程验证自己的理解。</p></div>`;
