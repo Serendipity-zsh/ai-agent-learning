@@ -36,3 +36,15 @@ python3 -m http.server 8000
 ```
 
 然后打开 http://localhost:8000。
+
+## 资料原则
+
+教材正文优先依据官方文档、官方仓库和论文；开源项目解剖会区分“官方文档明确说明的架构”和“基于源码阅读的实现推断”。项目迭代很快，源码路径和 API 以仓库当前版本为准。
+
+核心入口：
+
+- LangChain: https://docs.langchain.com/oss/python/langchain/overview
+- LangGraph: https://docs.langchain.com/oss/python/langgraph/overview
+- OpenClaw: https://github.com/openclaw/openclaw
+- Hermes Agent: https://github.com/NousResearch/hermes-agent
+- Claude Code: https://code.claude.com/docs/en/how-claude-code-works

@@ -6,6 +6,9 @@ const progressLabel = document.querySelector('#progress-label');
 const saved = JSON.parse(localStorage.getItem('agent-field-notes-progress') || '{}');
 let activeModule = COURSE_MODULES[0].id;
 let activeLesson = COURSE_MODULES[0].lessons[0].id;
+let activeBook = TEXTBOOK_CHAPTERS[0].id;
+
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 
 const allLessons = () => COURSE_MODULES.flatMap(module => module.lessons.map(lesson => ({ ...lesson, module })));
 const totalLessons = allLessons().length;
@@ -69,5 +72,21 @@ function renderSources() {
   document.querySelector('#source-grid').innerHTML = SOURCE_GUIDE.map((source, index) => `<a class="source-card" href="${source.url}" target="_blank" rel="noreferrer"><span>${String(index + 1).padStart(2, '0')}</span><div><h3>${source.name} ↗</h3><p>${source.focus}</p></div></a>`).join('');
 }
 
+function renderBookNav() {
+  const bookNav = document.querySelector('#book-nav');
+  bookNav.innerHTML = TEXTBOOK_CHAPTERS.map(chapter => `<button class="book-tab ${chapter.id === activeBook ? 'active' : ''}" data-id="${chapter.id}"><span>${chapter.number}</span><strong>${chapter.title}</strong><small>${chapter.tag}</small></button>`).join('');
+  bookNav.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { activeBook = button.dataset.id; renderBookNav(); renderBookDetail(); }));
+}
+
+function renderBookDetail() {
+  const chapter = TEXTBOOK_CHAPTERS.find(item => item.id === activeBook);
+  const bookDetail = document.querySelector('#book-detail');
+  bookDetail.innerHTML = `<header class="book-header"><p class="kicker">CHAPTER ${chapter.number} / ${chapter.tag}</p><h3>${chapter.title}</h3><p>${chapter.intro}</p></header>${chapter.sections.map((section, index) => `<section class="book-section"><h4><span>${String(index + 1).padStart(2, '0')}</span>${section.title}</h4>${section.paragraphs.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join('')}${section.diagram ? `<div class="diagram mermaid">${escapeHtml(section.diagram)}</div>` : ''}${section.code ? `<pre class="code-block"><code>${escapeHtml(section.code)}</code></pre>` : ''}${section.links ? `<div class="book-links">${section.links.map(link => `<a href="${link.url}" target="_blank" rel="noreferrer">${link.text} ↗</a>`).join('')}</div>` : ''}</section>`).join('')}`;
+  if (window.mermaid) {
+    window.mermaid.initialize({ startOnLoad: false, theme: 'base', themeVariables: { primaryColor: '#dae7fa', primaryTextColor: '#17212b', lineColor: '#2f69d9', fontFamily: 'DM Sans, sans-serif' } });
+    window.mermaid.run({ nodes: bookDetail.querySelectorAll('.mermaid') });
+  }
+}
+
 search.addEventListener('input', () => { renderLessons(); renderDetail(); });
-renderModules(); renderLessons(); renderDetail(); renderSources(); updateProgress();
+renderModules(); renderLessons(); renderDetail(); renderSources(); renderBookNav(); renderBookDetail(); updateProgress();

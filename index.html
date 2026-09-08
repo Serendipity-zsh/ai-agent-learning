@@ -16,6 +16,7 @@
     <nav aria-label="主导航">
       <a href="#roadmap">路线</a>
       <a href="#curriculum">课程</a>
+      <a href="#textbook">教材</a>
       <a href="#projects">项目</a>
     </nav>
     <a class="github-link" href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">GitHub ↗</a>
@@ -67,6 +68,11 @@
       </div>
     </section>
 
+    <section id="textbook" class="section textbook shell">
+      <div class="section-heading"><p class="kicker">THE TEXTBOOK</p><h2>先读懂，再动手，再读源码。</h2><p>这里是连续阅读的技术正文。章节中的架构图、流程图和代码片段解释“为什么这样设计”，课程阅读器负责把它拆成一课一课的练习。</p></div>
+      <div class="book-layout"><aside class="book-nav" id="book-nav" aria-label="教材章节"></aside><article class="book-detail" id="book-detail"></article></div>
+    </section>
+
     <section class="section source-map shell">
       <div class="section-heading"><p class="kicker">SOURCE MAP</p><h2>不要只学 API，也要学它们怎么实现。</h2><p>进入源码阶段后，沿着“公共 API → 类型协议 → 执行器 → 持久化/调度”的顺序阅读。</p></div>
       <div class="source-grid" id="source-grid"></div>
@@ -90,6 +96,8 @@
 
   <footer class="footer shell"><span>Agent Field Notes / Open learning repo</span><a href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">在 GitHub 上继续学习 ↗</a></footer>
   <script src="course-data.js"></script>
+  <script src="textbook-data.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
