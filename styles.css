@@ -223,6 +223,13 @@ pre { margin: 22px 0; padding: 18px 20px; overflow: auto; border: 1px solid #243
 .project-title-row h1 { margin: 6px 0 8px; font-size: 38px; line-height: 1.05; letter-spacing: -.04em; }
 .project-title-row p { margin: 0; color: var(--muted); }
 .status-badge { height: fit-content; padding: 5px 8px; border: 1px solid var(--line-strong); color: #4e6075; background: var(--soft); font: 9px var(--mono); white-space: nowrap; }
+.status-badge small { color: #72839a; font: 9px var(--mono); }
+.chapter-assessment { margin-top: 24px; padding: 22px 24px; border: 1px solid #c7d2e1; background: #fff; }
+.chapter-assessment h2 { margin: 0 0 12px; font-size: 20px; }
+.assessment-question { margin: 0 0 12px; color: #293d54; font-size: 15px; font-weight: 600; }
+.chapter-assessment details { color: #40536a; font-size: 13px; }
+.chapter-assessment summary { color: var(--blue-dark); cursor: pointer; font-weight: 600; }
+.chapter-assessment details p { margin: 10px 0 0; line-height: 1.75; }
 .project-positioning { margin: 24px 0; padding: 18px; border-left: 4px solid var(--blue); background: #f1f6ff; font-size: 15px; }
 .project-section { padding: 26px 0; border-top: 1px solid var(--line); }
 .project-section h2 { margin: 0 0 14px; font-size: 19px; }
