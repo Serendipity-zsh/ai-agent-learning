@@ -15,7 +15,7 @@
 2. **系统课程**：12 章连续教材，从第一性原理组织正文、架构图、代码、实验和验收标准。
 3. **概念辞典**：70 个原子技术点，每个词条都解释定义、底层机制、工程实现、局限、优化方向、关联概念和一手资料。
 4. **源码解剖**：11 个项目案例，覆盖 LangChain、LangGraph、LlamaIndex、Haystack、Mem0、Letta、OpenClaw、Hermes Agent、Claude Code、OpenHands 和 AutoGen。
-5. **实战实验**：14 条由浅入深的 Python-first 实验路径；全部提供无密钥参考实现、单元测试或可执行交付契约，覆盖 Provider、SQLite 向量索引、MCP Server 与端到端 Capstone。
+5. **实战实验**：15 条由浅入深的 Python-first 实验路径；全部提供无密钥参考实现、单元测试或可执行交付契约，覆盖 Provider、SQLite 向量索引、MCP Server、端到端 Capstone 和真实技术栈部署骨架。
 
 ## 推荐学习顺序
 

@@ -3,6 +3,7 @@ const domainFor = topic => TECH_DOMAINS.find(domain => domain.id === topic.domai
 const shortDomainName = domain => domain.name.replace(/^\d+\s*/, '');
 const progress = JSON.parse(localStorage.getItem('agent-systems-progress') || '{}');
 const labProgress = JSON.parse(localStorage.getItem('agent-systems-lab-progress') || '{}');
+const quizProgress = JSON.parse(localStorage.getItem('agent-systems-quiz-progress') || '{}');
 
 let activeView = 'map';
 let activeTopic = KNOWLEDGE_TOPICS[0].id;
@@ -119,6 +120,14 @@ function renderMapInspector() {
   bindConceptLinks(inspector, 'map');
 }
 
+function renderQuiz(chapterId) {
+  const questions = QUIZZES_BY_CHAPTER[chapterId] || [];
+  if (!questions.length) return '';
+  const answers = quizProgress[chapterId] || {};
+  const correct = questions.filter((question, index) => answers[index] === question.answer).length;
+  return `<section class="chapter-assessment"><p class="eyebrow">CHECK YOUR UNDERSTANDING / ${correct} / ${questions.length}</p><h2>章节自测</h2><p class="assessment-note">先独立作答；选择后立即看到解释。答错的题目会保留在本浏览器，复习时优先重做。</p>${questions.map((question, index) => `<fieldset class="quiz-question"><legend>${index + 1}. ${escapeHtml(question.q)}</legend><div class="quiz-options">${question.options.map((option, optionIndex) => `<button class="quiz-option ${answers[index] === optionIndex ? (optionIndex === question.answer ? 'correct' : 'wrong') : ''}" data-quiz-chapter="${chapterId}" data-quiz-index="${index}" data-quiz-answer="${optionIndex}">${escapeHtml(option)}</button>`).join('')}</div>${answers[index] !== undefined ? `<p class="quiz-feedback ${answers[index] === question.answer ? 'is-correct' : 'is-wrong'}">${answers[index] === question.answer ? '回答正确。' : '还需要复习。'} ${escapeHtml(question.why)}</p>` : ''}</fieldset>`).join('')}</section>`;
+}
+
 function renderChapterNav() {
   const nav = document.querySelector('#chapter-nav');
   nav.innerHTML = COURSE_CHAPTERS.map(chapter => `<button class="chapter-tab ${chapter.id === activeChapter ? 'active' : ''}" data-chapter="${chapter.id}"><span>${chapter.number}</span><span><strong>${escapeHtml(chapter.title)}</strong><small>${escapeHtml(chapter.tag)} · ${escapeHtml(chapter.duration)}${progress[chapter.id] ? ' · DONE' : ''}</small></span></button>`).join('');
@@ -142,7 +151,7 @@ function renderChapter() {
     ${chapter.sections.map((section, sectionIndex) => `<section class="chapter-section" id="${chapter.id}-section-${sectionIndex}"><h2><span>${String(sectionIndex + 1).padStart(2, '0')}</span>${escapeHtml(section.title)}</h2>${section.paragraphs.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join('')}${section.callout ? `<div class="callout">${escapeHtml(section.callout)}</div>` : ''}${section.diagram ? `<div class="diagram-shell"><div class="mermaid">${escapeHtml(section.diagram)}</div></div>` : ''}${section.code ? `<pre><code>${escapeHtml(section.code)}</code></pre>` : ''}</section>`).join('')}
     ${deepDive ? renderDeepDive(deepDive) : ''}
     <section class="lab-card"><p class="eyebrow">BUILD / TEST / EXPLAIN</p><h2>${escapeHtml(chapter.lab.title)}</h2><div class="lab-grid"><div><h3>实验步骤</h3><ol>${chapter.lab.steps.map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol></div><div><h3>可验证的验收标准</h3><ul>${chapter.lab.acceptance.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div></div></section>
-    ${CHAPTER_ASSESSMENTS[chapter.id] ? `<section class="chapter-assessment"><p class="eyebrow">CHECK YOUR UNDERSTANDING</p><h2>章节自测</h2><p class="assessment-question">${escapeHtml(CHAPTER_ASSESSMENTS[chapter.id][0])}</p><details><summary>查看参考答案</summary><p>${escapeHtml(CHAPTER_ASSESSMENTS[chapter.id][1])}</p></details></section>` : ''}
+    ${renderQuiz(chapter.id)}
     <div class="chapter-actions"><button class="pager-button" data-page-chapter="${index > 0 ? COURSE_CHAPTERS[index - 1].id : ''}" ${index > 0 ? '' : 'disabled'}>← 上一章</button><button class="complete-chapter ${progress[chapter.id] ? 'done' : ''}" data-complete-chapter="${chapter.id}">${progress[chapter.id] ? '✓ 本章已完成' : '标记本章完成'}</button><button class="pager-button" data-page-chapter="${index < COURSE_CHAPTERS.length - 1 ? COURSE_CHAPTERS[index + 1].id : ''}" ${index < COURSE_CHAPTERS.length - 1 ? '' : 'disabled'}>下一章 →</button></div>`;
   document.querySelector('#section-toc').innerHTML = chapter.sections.map((section, sectionIndex) => `<button data-section-target="${chapter.id}-section-${sectionIndex}">${escapeHtml(section.title)}</button>`).join('');
   document.querySelectorAll('[data-section-target]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.sectionTarget)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
@@ -155,6 +164,13 @@ function renderChapter() {
   });
   article.querySelectorAll('[data-page-chapter]').forEach(button => button.addEventListener('click', () => {
     if (button.dataset.pageChapter) location.hash = `chapter/${button.dataset.pageChapter}`;
+  }));
+  article.querySelectorAll('[data-quiz-answer]').forEach(button => button.addEventListener('click', () => {
+    const chapterAnswers = quizProgress[button.dataset.quizChapter] || {};
+    chapterAnswers[button.dataset.quizIndex] = Number(button.dataset.quizAnswer);
+    quizProgress[button.dataset.quizChapter] = chapterAnswers;
+    localStorage.setItem('agent-systems-quiz-progress', JSON.stringify(quizProgress));
+    renderChapter();
   }));
   renderMermaid(article);
 }
