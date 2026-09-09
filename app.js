@@ -2,6 +2,7 @@ const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '
 const domainFor = topic => TECH_DOMAINS.find(domain => domain.id === topic.domain);
 const shortDomainName = domain => domain.name.replace(/^\d+\s*/, '');
 const progress = JSON.parse(localStorage.getItem('agent-systems-progress') || '{}');
+const labProgress = JSON.parse(localStorage.getItem('agent-systems-lab-progress') || '{}');
 
 let activeView = 'map';
 let activeTopic = KNOWLEDGE_TOPICS[0].id;
@@ -247,9 +248,15 @@ function renderProjects() { renderProjectIndex(); renderProject(); }
 
 function renderLabs() {
   const lab = LAB_BY_ID[activeLab] || LABS[0];
+  const completedLabs = LABS.filter(item => labProgress[item.id]).length;
   document.querySelector('#lab-path').innerHTML = LABS.map(item => `<button class="lab-path-step ${item.id === lab.id ? 'active' : ''}" data-lab="${item.id}">${item.number}</button>`).join('');
   document.querySelector('#lab-index').innerHTML = LABS.map(item => `<button class="lab-tab ${item.id === lab.id ? 'active' : ''}" data-lab="${item.id}"><span>LAB ${item.number}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.chapter)}</small></button>`).join('');
-  document.querySelector('#lab-article').innerHTML = `<header class="lab-detail-head"><p class="eyebrow">LAB ${lab.number} / ${escapeHtml(lab.chapter)}</p><h1>${escapeHtml(lab.title)}</h1><p>${escapeHtml(lab.goal)}</p></header><section class="project-section"><h2>你将建立的能力</h2><div class="tag-list">${lab.concepts.map(name => `<span class="tag-button">${escapeHtml(name)}</span>`).join('')}</div></section><section class="project-section"><h2>运行与验证</h2><pre><code>cd ai-agent-learning\n${escapeHtml(lab.commands.join('\n'))}</code></pre><h3>验收标准</h3><ul class="decision-list">${lab.checks.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section><section class="project-section"><h2>学习顺序</h2><ol class="flow-list"><li>先阅读实验说明和失败场景。</li><li>运行测试，观察约束的可执行定义。</li><li>修改实现使一个测试失败，再解释为什么它是安全边界。</li><li>最后把相同契约映射回课程和开源项目。</li></ol></section><a class="lab-source-link" href="https://github.com/Serendipity-zsh/ai-agent-learning/blob/main/labs/${escapeHtml(lab.source)}" target="_blank" rel="noreferrer">阅读实验说明与源码 ↗</a>`;
+  document.querySelector('#lab-article').innerHTML = `<header class="lab-detail-head"><p class="eyebrow">LAB ${lab.number} / ${escapeHtml(lab.chapter)} · ${completedLabs} / ${LABS.length} 已完成</p><h1>${escapeHtml(lab.title)}</h1><p>${escapeHtml(lab.goal)}</p></header><section class="project-section"><h2>你将建立的能力</h2><div class="tag-list">${lab.concepts.map(name => `<span class="tag-button">${escapeHtml(name)}</span>`).join('')}</div></section><section class="project-section"><h2>运行与验证</h2><pre><code>cd ai-agent-learning\n${escapeHtml(lab.commands.join('\n'))}</code></pre><h3>验收标准</h3><ul class="decision-list">${lab.checks.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section><section class="project-section"><h2>学习顺序</h2><ol class="flow-list"><li>先阅读实验说明和失败场景。</li><li>运行测试，观察约束的可执行定义。</li><li>修改实现使一个测试失败，再解释为什么它是安全边界。</li><li>最后把相同契约映射回课程和开源项目。</li></ol></section><div class="lab-completion"><button class="complete-lab ${labProgress[lab.id] ? 'done' : ''}" data-complete-lab="${lab.id}">${labProgress[lab.id] ? '✓ 已完成本实验' : '标记实验完成'}</button><span>完成状态仅保存在当前浏览器</span></div><a class="lab-source-link" href="https://github.com/Serendipity-zsh/ai-agent-learning/blob/main/labs/${escapeHtml(lab.source)}" target="_blank" rel="noreferrer">阅读实验说明与源码 ↗</a>`;
+  document.querySelector('[data-complete-lab]').addEventListener('click', () => {
+    labProgress[lab.id] = !labProgress[lab.id];
+    localStorage.setItem('agent-systems-lab-progress', JSON.stringify(labProgress));
+    renderLabs();
+  });
   document.querySelectorAll('[data-lab]').forEach(button => button.addEventListener('click', () => { location.hash = `lab/${button.dataset.lab}`; }));
 }
 

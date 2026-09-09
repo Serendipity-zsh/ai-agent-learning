@@ -390,6 +390,10 @@ footer a { color: #c6d6e8; }
 .lab-detail-head h1 { margin: 4px 0 12px; font-size: clamp(30px, 4vw, 46px); letter-spacing: -.05em; }
 .lab-detail-head > p:last-child { max-width: 780px; margin: 0; color: #47586c; font-size: 16px; line-height: 1.75; }
 .lab-source-link { display: inline-block; margin-top: 26px; padding: 10px 13px; border: 1px solid var(--blue); color: var(--blue-dark); font-size: 12px; }
+.lab-completion { display: flex; align-items: center; gap: 12px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); }
+.complete-lab { min-height: 38px; padding: 8px 13px; border: 1px solid var(--line-strong); background: #fff; cursor: pointer; font-size: 11px; }
+.complete-lab.done { border-color: var(--green); color: #fff; background: var(--green); }
+.lab-completion span { color: var(--muted); font-size: 11px; }
 .search-result.selected { background: #eaf3ff; box-shadow: inset 3px 0 0 var(--blue); }
 .empty-search, .empty-detail { padding: 44px 20px; color: var(--muted); text-align: center; }
 .empty-detail h2 { color: var(--ink); }

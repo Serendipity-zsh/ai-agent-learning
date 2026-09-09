@@ -15,7 +15,7 @@
 2. **系统课程**：12 章连续教材，从第一性原理组织正文、架构图、代码、实验和验收标准。
 3. **概念辞典**：70 个原子技术点，每个词条都解释定义、底层机制、工程实现、局限、优化方向、关联概念和一手资料。
 4. **源码解剖**：11 个项目案例，覆盖 LangChain、LangGraph、LlamaIndex、Haystack、Mem0、Letta、OpenClaw、Hermes Agent、Claude Code、OpenHands 和 AutoGen。
-5. **实战实验**：10 条由浅入深的 Python-first 实验路径；目前前 4 个提供无密钥参考实现和单元测试，其余实验先提供设计契约与验收标准，并将持续补齐。
+5. **实战实验**：14 条由浅入深的 Python-first 实验路径；全部提供无密钥参考实现、单元测试或可执行交付契约，覆盖 Provider、SQLite 向量索引、MCP Server 与端到端 Capstone。
 
 ## 推荐学习顺序
 
@@ -36,10 +36,12 @@
 - `knowledge-data.js`：7 个领域、70 个原子知识点。
 - `chapters-data.js`：12 章系统课程和可验证实验。
 - `projects-data.js`：11 个源码/产品架构案例。
-- `labs-data.js` 与 `labs/`：实验路线、说明、参考实现和测试。
+- `labs-data.js` 与 `labs/`：实验路线、说明、参考实现和测试；11—14 是真实工程集成与综合项目。
+- `assessment-data.js`：每章自测问题与参考答案。
+- `source-reading-data.js` 与 `source-refs-data.js`：固定源码快照、文件级阅读入口和证据边界。
 - `app.js`：深链路由、全文搜索、课程进度和内容渲染。
 
-所有页面都由上述统一数据生成，避免课程、教材和辞典之间内容漂移。
+所有页面都由上述统一数据生成，避免课程、教材、实验和辞典之间内容漂移。章节完成与实验完成状态分别保存在当前浏览器的 localStorage 中。
 
 ## 本地预览
 
