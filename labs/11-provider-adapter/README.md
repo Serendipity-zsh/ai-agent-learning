@@ -5,7 +5,7 @@
 ## 运行
 
 ```bash
-python3 -m unittest labs/11-provider-adapter/test_adapter.py -v
+python3 -m unittest discover -s labs/11-provider-adapter -p 'test_*.py' -v
 ```
 
 ## 核心边界

@@ -1,11 +1,11 @@
 const PROJECT_SOURCE_READINGS = {
   langchain: {
-    ref: 'master @ e670c7a (2026-09-08 核验)',
+    ref: 'master @ 6908e67（2026-10-22 核验路径）',
     chain: 'create_agent → middleware hooks → model/tool nodes → compiled LangGraph',
     files: [
-      ['Agent factory', 'libs/langchain/langchain/agents/factory.py', 'https://github.com/langchain-ai/langchain/blob/e670c7a03ba36fd1516f0185f7ec1186c89aa471/libs/langchain/langchain/agents/factory.py', '从 create_agent 的 state、edge 和 middleware 注入开始，避免把高层 API 当黑盒。'],
-      ['Core messages', 'libs/core/langchain_core/messages', 'https://github.com/langchain-ai/langchain/tree/e670c7a03ba36fd1516f0185f7ec1186c89aa471/libs/core/langchain_core/messages', '确认内部消息模型如何承载 tool calls、tool results 与 content blocks。'],
-      ['Middleware', 'libs/langchain/langchain/agents/middleware', 'https://github.com/langchain-ai/langchain/tree/e670c7a03ba36fd1516f0185f7ec1186c89aa471/libs/langchain/langchain/agents/middleware', '观察审批、重试、限制和摘要怎样成为环绕 node 的横切策略。']
+      ['Agent factory', 'libs/langchain_v1/langchain/agents/factory.py', 'https://github.com/langchain-ai/langchain/blob/6908e6775cb6f9e9a1bb6a13e2f0322cdff12a3c/libs/langchain_v1/langchain/agents/factory.py', '从 create_agent 的 state、edge 和 middleware 注入开始，避免把高层 API 当黑盒。'],
+      ['Core messages', 'libs/core/langchain_core/messages', 'https://github.com/langchain-ai/langchain/tree/6908e6775cb6f9e9a1bb6a13e2f0322cdff12a3c/libs/core/langchain_core/messages', '确认内部消息模型如何承载 tool calls、tool results 与 content blocks。'],
+      ['Middleware', 'libs/langchain_v1/langchain/agents/middleware', 'https://github.com/langchain-ai/langchain/tree/6908e6775cb6f9e9a1bb6a13e2f0322cdff12a3c/libs/langchain_v1/langchain/agents/middleware', '观察审批、重试、限制和摘要怎样成为环绕 node 的横切策略。']
     ]
   },
   langgraph: {
@@ -48,45 +48,45 @@ const PROJECT_SOURCE_READINGS = {
     ref: 'main @ 5be4479 (2026-09-09 核验)',
     chain: 'Workflow/Agent → Retriever → QueryPipeline → ResponseSynthesizer → observability callbacks',
     files: [
-      ['Core query engine', 'llama-index-core/llama_index/core/query_engine', 'https://github.com/run-llama/llama_index/tree/5be447943168d8ac800901a623ca50bdbdee1c8e1/llama-index-core/llama_index/core/query_engine', '先读 query engine 如何编排 retriever、synthesizer 和 callback。'],
-      ['Retriever contracts', 'llama-index-core/llama_index/core/retrievers', 'https://github.com/run-llama/llama_index/tree/5be447943168d8ac800901a623ca50bdbdee1c8e1/llama-index-core/llama_index/core/retrievers', '确认节点、相似度、metadata filter 如何进入召回 contract。'],
-      ['Workflow runtime', 'llama-index-core/llama_index/core/workflow', 'https://github.com/run-llama/llama_index/tree/5be447943168d8ac800901a623ca50bdbdee1c8e1/llama-index-core/llama_index/core/workflow', '对照事件驱动 workflow 与 LangGraph 状态图的差异。']
+      ['Core query engine', 'llama-index-core/llama_index/core/query_engine', 'https://github.com/run-llama/llama_index/tree/5be447943168d8ac800901a623ca50bdbdee1c8e/llama-index-core/llama_index/core/query_engine', '先读 query engine 如何编排 retriever、synthesizer 和 callback。'],
+      ['Retriever contracts', 'llama-index-core/llama_index/core/retrievers', 'https://github.com/run-llama/llama_index/tree/5be447943168d8ac800901a623ca50bdbdee1c8e/llama-index-core/llama_index/core/retrievers', '确认节点、相似度、metadata filter 如何进入召回 contract。'],
+      ['Workflow runtime', 'llama-index-core/llama_index/core/workflow', 'https://github.com/run-llama/llama_index/tree/5be447943168d8ac800901a623ca50bdbdee1c8e/llama-index-core/llama_index/core/workflow', '对照事件驱动 workflow 与 LangGraph 状态图的差异。']
     ]
   },
   haystack: {
-    ref: 'main @ 3fc6b0e (2026-09-09 核验)',
+    ref: 'main @ bfa8e37（2026-10-22 核验路径）',
     chain: 'Pipeline graph → component sockets → DocumentStore → Retriever/Ranker → Generator',
     files: [
-      ['Pipeline graph', 'haystack/core/pipeline', 'https://github.com/deepset-ai/haystack/tree/3fc6b0e0457d58ef8fbed619f4d2e01df228ab69/haystack/core/pipeline', '检查 component 输入输出 socket 和拓扑校验如何阻止非法连线。'],
-      ['Component API', 'haystack/core/component', 'https://github.com/deepset-ai/haystack/tree/3fc6b0e0457d58ef8fbed619f4d2e01df228ab69/haystack/core/component', '理解装饰器如何生成可组合的运行时 contract。'],
-      ['Document stores', 'haystack/document_stores', 'https://github.com/deepset-ai/haystack/tree/3fc6b0e0457d58ef8fbed619f4d2e01df228ab69/haystack/document_stores', '比较存储 adapter 与 RAG pipeline 的一致性边界。']
+      ['Pipeline graph', 'haystack/core/pipeline', 'https://github.com/deepset-ai/haystack/tree/bfa8e37e8b3c3262318f1d48f9e1a03a42ed3d42/haystack/core/pipeline', '检查 component 输入输出 socket 和拓扑校验如何阻止非法连线。'],
+      ['Component API', 'haystack/core/component', 'https://github.com/deepset-ai/haystack/tree/bfa8e37e8b3c3262318f1d48f9e1a03a42ed3d42/haystack/core/component', '理解装饰器如何生成可组合的运行时 contract。'],
+      ['Document stores', 'haystack/document_stores', 'https://github.com/deepset-ai/haystack/tree/bfa8e37e8b3c3262318f1d48f9e1a03a42ed3d42/haystack/document_stores', '比较存储 adapter 与 RAG pipeline 的一致性边界。']
     ]
   },
   letta: {
-    ref: 'main @ ceab0a0 (2026-09-09 核验)',
+    ref: 'archive @ 56ba9c2（2026-10-22 核验历史 V1 路径；当前源码已迁移到 letta-ai/letta-code）',
     chain: 'Agent server → memory blocks → archival search → tool call → persistence/event log',
     files: [
-      ['Agent core', 'letta/agents', 'https://github.com/letta-ai/letta/tree/ceab0a07e4a881c7ceb6c98ed1b5a027a138b273/letta/agents', '沿 agent 状态、消息和工具调用定位 memory-first loop。'],
-      ['Memory blocks', 'letta/schemas/memory.py', 'https://github.com/letta-ai/letta/blob/ceab0a07e4a881c7ceb6c98ed1b5a027a138b273/letta/schemas/memory.py', '区分始终在上下文的 core memory 与按需检索的 archival memory。'],
-      ['Tool execution', 'letta/functions', 'https://github.com/letta-ai/letta/tree/ceab0a07e4a881c7ceb6c98ed1b5a027a138b273/letta/functions', '检查工具参数、返回值和持久状态更新的顺序。']
+      ['Agent core', 'letta/agents', 'https://github.com/letta-ai/letta/tree/56ba9c25552605eec89de8ed3dc6394b625c1993/letta/agents', '沿 agent 状态、消息和工具调用定位 memory-first loop。'],
+      ['Memory blocks', 'letta/schemas/memory.py', 'https://github.com/letta-ai/letta/blob/56ba9c25552605eec89de8ed3dc6394b625c1993/letta/schemas/memory.py', '区分始终在上下文的 core memory 与按需检索的 archival memory。'],
+      ['Tool execution', 'letta/functions', 'https://github.com/letta-ai/letta/tree/56ba9c25552605eec89de8ed3dc6394b625c1993/letta/functions', '检查工具参数、返回值和持久状态更新的顺序。']
     ]
   },
   hermes: {
-    ref: 'main @ de54f4a (2026-09-09 核验)',
+    ref: 'main @ 81a5543（2026-10-22 核验路径）',
     chain: 'CLI/channel → prompt builder → provider fallback → tool dispatcher → memory flush → session',
     files: [
-      ['Main agent', 'hermes-agent/agent.py', 'https://github.com/NousResearch/hermes-agent/blob/de54f4a461b6e453bcf83cc2a6e60d00a494ef0c0/hermes-agent/agent.py', '阅读单体 loop 如何统一 provider fallback、工具和压缩。'],
-      ['Prompt builder', 'hermes-agent/prompt_builder.py', 'https://github.com/NousResearch/hermes-agent/blob/de54f4a461b6e453bcf83cc2a6e60d00a494ef0c0/hermes-agent/prompt_builder.py', '观察系统提示、skills 和工具定义如何分层装配。'],
-      ['MCP/tools', 'hermes-agent/tools', 'https://github.com/NousResearch/hermes-agent/tree/de54f4a461b6e453bcf83cc2a6e60d00a494ef0c0/hermes-agent/tools', '对照本地工具和 MCP 工具的授权与错误处理。']
+      ['Main agent', 'run_agent.py', 'https://github.com/NousResearch/hermes-agent/blob/81a55437f3f31a9f12a30c53b6c5d49d420898aa/run_agent.py', '阅读单体 loop 如何统一 provider fallback、工具和压缩。'],
+      ['Prompt builder', 'agent/prompt_builder.py', 'https://github.com/NousResearch/hermes-agent/blob/81a55437f3f31a9f12a30c53b6c5d49d420898aa/agent/prompt_builder.py', '观察系统提示、skills 和工具定义如何分层装配。'],
+      ['MCP/tools', 'tools', 'https://github.com/NousResearch/hermes-agent/tree/81a55437f3f31a9f12a30c53b6c5d49d420898aa/tools', '对照本地工具和 MCP 工具的授权与错误处理。']
     ]
   },
   openhands: {
-    ref: 'main @ 0e9fc2c (2026-09-09 核验)',
+    ref: 'tag 0.62.0 @ 7fbb48c（历史 Python 架构；当前主仓库已演进为 Agent Canvas）',
     chain: 'Agent → EventStream → ActionExecutor → Sandbox/Runtime → Observation → replay',
     files: [
-      ['Agent controller', 'openhands/agenthub', 'https://github.com/All-Hands-AI/OpenHands/tree/0e9fc2cc152b4a4d9fd736f107412ace2a0c2555/openhands/agenthub', '从 AgentHub 入口观察不同 agent 实现如何共享 Action/Observation contract。'],
-      ['Event stream', 'openhands/events', 'https://github.com/All-Hands-AI/OpenHands/tree/0e9fc2cc152b4a4d9fd736f107412ace2a0c2555/openhands/events', '事件流是回放、UI 和 agent 共同消费的事实源。'],
-      ['Runtime sandbox', 'openhands/runtime', 'https://github.com/All-Hands-AI/OpenHands/tree/0e9fc2cc152b4a4d9fd736f107412ace2a0c2555/openhands/runtime', '检查命令执行、容器隔离、超时和资源限制。']
+      ['Agent controller', 'openhands/agenthub', 'https://github.com/All-Hands-AI/OpenHands/tree/7fbb48c40679afd674970966b96185657d92a487/openhands/agenthub', '从 AgentHub 入口观察不同 agent 实现如何共享 Action/Observation contract。'],
+      ['Event stream', 'openhands/events', 'https://github.com/All-Hands-AI/OpenHands/tree/7fbb48c40679afd674970966b96185657d92a487/openhands/events', '事件流是回放、UI 和 agent 共同消费的事实源。'],
+      ['Runtime sandbox', 'openhands/runtime', 'https://github.com/All-Hands-AI/OpenHands/tree/7fbb48c40679afd674970966b96185657d92a487/openhands/runtime', '检查命令执行、容器隔离、超时和资源限制。']
     ]
   },
   'claude-code': {

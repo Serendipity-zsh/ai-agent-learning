@@ -1,103 +1,33 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="从第一性原理到生产实现的 AI Agent 技术课程、概念辞典与开源项目源码解读。" />
-  <meta name="theme-color" content="#0b1728" />
-  <title>Agent Systems Manual · AI Agent 技术课程</title>
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="mask-icon" href="favicon.svg" color="#1769ff" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Inter:wght@400;500;600;700&amp;family=Noto+Sans+SC:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+<meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="从模型原理到可靠的 Agent 系统。中文课程、实战实验、源码阅读与前沿专题，带学习记录和自测复习。" />
+<meta name="theme-color" content="#f8f9fc" /><title>Agent Systems · 从理解到构建</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml" /><link rel="canonical" href="https://ai.yusenleo.top/" />
+<link rel="stylesheet" href="tokens.css?v=20261022" /><link rel="stylesheet" href="styles.css?v=20261022" />
 </head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="#map" aria-label="返回技术地图"><span class="brand-sigil" aria-hidden="true"><img src="favicon.svg" alt="" /></span><span><strong>Agent Systems</strong><small>技术手册 · v2.1</small></span></a>
-    <nav class="primary-nav" aria-label="主导航">
-      <button class="nav-item active" data-view="map">技术地图</button>
-      <button class="nav-item" data-view="course">系统课程</button>
-      <button class="nav-item" data-view="labs">实战实验</button>
-      <button class="nav-item" data-view="glossary">概念辞典</button>
-      <button class="nav-item" data-view="projects">源码解剖</button>
-    </nav>
-    <div class="top-actions"><button class="search-trigger" id="search-trigger" aria-label="打开全站搜索"><span>⌕</span><span>搜索全部内容</span><kbd>⌘ K</kbd></button><a class="repo-link" href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">GitHub ↗</a></div>
-  </header>
-
-  <div class="search-layer" id="search-layer" hidden>
-    <div class="search-dialog" role="dialog" aria-modal="true" aria-label="全站搜索">
-      <div class="search-input-row"><span>⌕</span><input id="global-search" type="search" placeholder="搜索 Token、RAG、checkpoint、OpenClaw…" autocomplete="off" /><button id="search-close" aria-label="关闭搜索">ESC</button></div>
-      <div class="search-hint" id="search-hint">输入关键词，检索技术点、课程、实验与项目案例。</div>
-      <div class="search-results" id="search-results" role="listbox" aria-label="搜索结果"></div>
-    </div>
-  </div>
-
-  <main>
-    <section class="view active" id="view-map" data-view-panel="map">
-      <div class="manual-layout">
-        <aside class="manual-rail">
-          <p class="eyebrow">KNOWLEDGE TREE</p><h1>AI Agent<br />技术全景</h1>
-          <p class="rail-intro">先看系统由哪些层组成，再沿着依赖关系进入每个实现细节。</p>
-          <div class="domain-rail" id="domain-rail"></div>
-          <div class="rail-metrics"><div><strong id="topic-count">70</strong><span>核心技术点</span></div><div><strong id="chapter-count">12</strong><span>系统章节</span></div><div><strong id="project-count">11</strong><span>项目案例</span></div></div>
-        </aside>
-        <div class="map-workspace">
-          <header class="view-heading"><div><p class="eyebrow">TECHNICAL ROADMAP / 01—07</p><h2>从概率模型，到可恢复的生产系统</h2></div><p>这张地图不是名词目录。每个节点都可以打开，查看机制、工程实现、局限、优化方向和一手资料。</p></header>
-          <div class="dependency-line" aria-label="主学习路径"><span>MODEL</span><i></i><span>PROTOCOL</span><i></i><span>KNOWLEDGE</span><i></i><span>RUNTIME</span><i></i><span>STATE</span><i></i><span>CONTROL</span><i></i><span>PRODUCTION</span></div>
-          <div class="domain-map" id="domain-map"></div>
-        </div>
-        <aside class="inspector" id="map-inspector" aria-live="polite"></aside>
-      </div>
-    </section>
-
-    <section class="view" id="view-course" data-view-panel="course">
-      <div class="course-layout">
-        <aside class="chapter-sidebar"><div class="sidebar-heading"><p class="eyebrow">SYSTEM COURSE</p><h2>课程目录</h2><div class="course-progress"><span><i id="progress-fill"></i></span><small id="progress-label">0 / 12 章完成</small></div></div><nav id="chapter-nav" aria-label="课程章节"></nav></aside>
-        <article class="chapter-article" id="chapter-article"></article>
-        <aside class="article-aside"><div class="sticky-aside"><p class="eyebrow">IN THIS CHAPTER</p><nav id="section-toc" class="section-toc"></nav><div class="aside-rule"></div><p class="eyebrow">ATOMIC TOPICS</p><div id="chapter-topics" class="chapter-topics"></div></div></aside>
-      </div>
-    </section>
-
-    <section class="view" id="view-glossary" data-view-panel="glossary">
-      <div class="library-shell">
-        <header class="library-header"><div><p class="eyebrow">CONCEPT LIBRARY / <span id="glossary-count">70</span> ENTRIES</p><h1>Agent 技术概念辞典</h1><p>不是一句话释义：每个词条都包含底层机制、实现路径、局限、优化方向和关联知识。</p></div><label class="inline-search"><span>⌕</span><input id="glossary-search" type="search" placeholder="检索概念与实现细节…" /></label></header>
-        <div class="filter-row" id="glossary-filters"></div>
-        <div class="glossary-layout"><div class="glossary-index" id="glossary-index"></div><article class="concept-article" id="concept-article"></article></div>
-      </div>
-    </section>
-
-    <section class="view" id="view-labs" data-view-panel="labs">
-      <div class="labs-shell">
-        <header class="library-header"><div><p class="eyebrow">LEARN BY BUILDING / PYTHON FIRST</p><h1>从原理到可验证实现</h1><p>每个实验先定义可验证的运行时契约，再独立实现；已有参考实现的实验可直接运行，设计实验会逐步补齐测试。</p></div><div class="evidence-note"><span>运行约定</span><p>实验不依赖模型密钥；使用标准库和确定性假模型，先验证控制逻辑，再接入真实 provider。</p></div></header>
-        <div class="lab-path" id="lab-path"></div>
-        <div class="lab-layout"><aside class="lab-index" id="lab-index"></aside><article class="lab-article" id="lab-article"></article></div>
-      </div>
-    </section>
-
-    <section class="view" id="view-projects" data-view-panel="projects">
-      <div class="projects-shell">
-        <header class="library-header project-header"><div><p class="eyebrow">SOURCE-BASED CASE STUDIES</p><h1>优秀项目源码解剖</h1><p>沿着入口、协议、执行循环、状态与持久化阅读；解释每个模块为什么存在，而不只展示如何调用 API。</p></div><div class="evidence-note"><span>证据边界</span><p>开源项目基于源码与官方文档；Claude Code 明确标为闭源产品，只分析公开架构。</p></div></header>
-        <div class="project-layout"><aside class="project-index" id="project-index"></aside><article class="project-article" id="project-article"></article><aside class="compare-panel" id="compare-panel"></aside></div>
-      </div>
-    </section>
-  </main>
-
-  <div class="mobile-bar" aria-label="移动端导航"><button data-view="map" class="active">地图</button><button data-view="course">课程</button><button data-view="labs">实验</button><button data-view="glossary">辞典</button><button data-view="projects">源码</button></div>
-  <footer><span>Agent Systems Manual</span><span>内容以官方文档、论文和源码为依据 · <a href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">共同维护 ↗</a></span></footer>
-
-  <script src="knowledge-data.js"></script>
-  <script src="chapters-data.js"></script>
-  <script src="projects-data.js"></script>
-  <script src="labs-data.js"></script>
-  <script src="deep-dives-data.js"></script>
-  <script src="source-reading-data.js"></script>
-  <script src="source-traces-data.js"></script>
-  <script src="source-refs-data.js"></script>
-  <script src="assessment-data.js"></script>
-  <script src="quiz-data.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
-  <script src="app.js"></script>
-</body>
-</html>
+<a class="skip-link" href="#content">跳到正文</a>
+<aside class="site-sidebar" id="site-sidebar" aria-label="站点导航">
+<a class="brand" href="#home"><img src="favicon.svg" alt="" width="34" height="34" /><span>Agent Systems<small>AI Agent 学习手册</small></span></a>
+<button id="menu-close" class="icon-button" aria-label="关闭导航菜单">关闭菜单</button>
+<button class="search-trigger" data-open-search><span>搜索知识与课程</span><kbd>⌘ K</kbd></button>
+<nav id="main-nav" aria-label="主导航"></nav>
+<div class="sidebar-note"><span class="status-dot"></span> 持续学习，构建可靠系统<p>原理、实践与源码<br />在一条路径上连接起来。</p></div>
+<div class="sidebar-bottom"><a href="https://github.com/Serendipity-zsh/ai-agent-learning" target="_blank" rel="noreferrer">GitHub 仓库 ↗</a><button id="theme-toggle" aria-label="切换深色模式">深色模式</button></div>
+</aside>
+<div class="site-frame">
+<header class="topbar"><button id="menu-toggle" class="icon-button" aria-expanded="false" aria-controls="site-sidebar" aria-label="打开导航">菜单</button><div id="breadcrumbs">学习中心</div><div class="topbar-actions"><span class="edition">2026 年 10 月版</span><button class="icon-button" data-open-search aria-label="打开搜索">搜索</button><a href="#progress" class="profile-link">我的学习</a></div></header>
+<main id="content" tabindex="-1"></main>
+<footer class="site-footer"><span>Agent Systems · 从理解到构建</span><span>学习记录仅保存在本浏览器 · <a href="#progress">备份记录</a></span></footer>
+</div>
+<button id="nav-scrim" class="nav-scrim" hidden aria-label="关闭导航"></button>
+<dialog id="search-dialog" aria-labelledby="search-title"><div class="search-head"><h2 id="search-title" class="sr-only">搜索全部学习内容</h2><label class="sr-only" for="global-search">关键词</label><input id="global-search" type="search" placeholder="搜索 RAG、MCP、记忆、Checkpoint…" autocomplete="off" /><button id="search-close" class="icon-button">关闭</button></div><p id="search-hint" class="search-hint"></p><div id="search-results"></div><div class="search-footer">↑ ↓ 选择结果　Enter 打开　Esc 关闭</div></dialog>
+<p id="live-status" class="sr-only" role="status" aria-live="polite"></p>
+<script src="knowledge-data.js"></script><script src="chapters-data.js"></script><script src="projects-data.js"></script>
+<script src="labs-data.js"></script><script src="deep-dives-data.js"></script><script src="source-reading-data.js"></script>
+<script src="source-traces-data.js"></script><script src="source-refs-data.js"></script><script src="quiz-data.js"></script>
+<script src="modern-data.js?v=20261022"></script><script src="learning-state.js?v=20261022"></script>
+<script defer src="app.js?v=20261022"></script>
+</body></html>

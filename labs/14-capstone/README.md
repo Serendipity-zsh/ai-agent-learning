@@ -25,5 +25,5 @@ Ingress → Intent Router → Context Builder → Model
 运行：
 
 ```bash
-python3 -m unittest labs/14-capstone/test_capstone.py -v
+python3 -m unittest discover -s labs/14-capstone -p 'test_*.py' -v
 ```

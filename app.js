@@ -1,347 +1,232 @@
-const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
-const domainFor = topic => TECH_DOMAINS.find(domain => domain.id === topic.domain);
-const shortDomainName = domain => domain.name.replace(/^\d+\s*/, '');
-const progress = JSON.parse(localStorage.getItem('agent-systems-progress') || '{}');
-const labProgress = JSON.parse(localStorage.getItem('agent-systems-lab-progress') || '{}');
-const quizProgress = JSON.parse(localStorage.getItem('agent-systems-quiz-progress') || '{}');
+const $ = selector => document.querySelector(selector);
+const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+const cleanTitle = title => title.replace(/^\d+\.\d+\s*/, '');
+let storage;
+try { storage = window.localStorage; } catch { storage = { getItem: () => null, setItem: () => { throw new Error('storage unavailable'); } }; }
+const stateKeys = { chapters: 'agent-systems-progress', labs: 'agent-systems-lab-progress', quizzes: 'agent-systems-quiz-progress', notes: 'agent-systems-notes', bookmarks: 'agent-systems-bookmarks', prefs: 'agent-systems-preferences' };
+const learning = Object.fromEntries(Object.entries(stateKeys).map(([name, key]) => [name, LearningState.read(storage, key)]));
+let searchSelection = 0;
+let glossaryQuery = '', glossaryDomain = 'all';
+let activeRoute = '';
+let mermaidLoading = false;
+const navigation = [['home', '学习中心', '⌂'], ['course', '系统课程', '▤'], ['labs', '实战实验', '⌘'], ['projects', '源码研读', '⌥'], ['map', '知识地图', '⊞'], ['glossary', '概念辞典', '≡'], ['frontier', '前沿专题', '◈'], ['progress', '我的学习', '○']];
 
-let activeView = 'map';
-let activeTopic = KNOWLEDGE_TOPICS[0].id;
-let activeMapDomain = 'all';
-let activeGlossaryDomain = 'all';
-let activeChapter = COURSE_CHAPTERS[0].id;
-let activeProject = PROJECT_CASES[0].id;
-let activeLab = LABS[0].id;
-let mobileInspectorOpen = false;
-let searchSelection = -1;
-let lastSearchTrigger = null;
-
-const RELATION_LINKS = {
-  langchain: ['langgraph'], langgraph: ['langchain'], llamaindex: ['haystack'], haystack: ['llamaindex'],
-  mem0: ['letta', 'openclaw'], letta: ['mem0'], openclaw: ['hermes', 'langgraph'], hermes: ['openclaw'],
-  'claude-code': ['openhands'], openhands: ['claude-code'], autogen: ['langgraph']
-};
-
-if (window.mermaid) {
-  window.mermaid.initialize({
-    startOnLoad: false,
-    theme: 'base',
-    securityLevel: 'strict',
-    themeVariables: {
-      primaryColor: '#eaf2ff', primaryBorderColor: '#1769ff', primaryTextColor: '#0b1728',
-      secondaryColor: '#edf8f8', tertiaryColor: '#fff7e8', lineColor: '#60748b',
-      fontFamily: 'Inter, Noto Sans SC, sans-serif', fontSize: '13px'
-    },
-    flowchart: { curve: 'basis', htmlLabels: true }
-  });
+function announce(message) { $('#live-status').textContent = message; }
+function save(name) {
+  try { storage.setItem(stateKeys[name], JSON.stringify(learning[name])); return true; }
+  catch { announce('浏览器未能保存记录，请到“我的学习”导出备份。'); return false; }
 }
-
-function renderMermaid(root) {
-  if (!window.mermaid || !root) return;
-  const nodes = root.querySelectorAll('.mermaid:not([data-processed])');
-  if (nodes.length) window.mermaid.run({ nodes }).catch(error => console.warn('Mermaid render failed', error));
-}
-
 function sourceLinks(sources = []) {
-  return sources.length ? `<div class="source-links">${sources.map(source => `<a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">${escapeHtml(source.label)} ↗</a>`).join('')}</div>` : '<p>暂无外部链接。</p>';
+  return `<div class="source-links">${sources.filter(source => /^https?:\/\//.test(source.url)).map(source => `<a href="${esc(source.url)}" target="_blank" rel="noreferrer">${esc(source.label)} ↗</a>`).join('')}</div>`;
 }
-
-function topicButton(id, className = 'tag-button') {
-  const topic = TOPIC_BY_ID[id];
-  return topic
-    ? `<button class="${className}" data-concept="${escapeHtml(id)}">${escapeHtml(topic.name)}</button>`
-    : `<span class="${className}">${escapeHtml(id)}</span>`;
+function codeBlock(code, label = '参考代码 · 阅读后运行验证') {
+  return `<div class="code-shell"><div class="code-label"><span>${esc(label)}</span><button class="copy-code">复制代码</button></div><pre><code>${esc(code)}</code></pre></div>`;
 }
-
-function bindConceptLinks(root, targetView = 'glossary') {
-  root.querySelectorAll('[data-concept]').forEach(button => button.addEventListener('click', () => {
-    const id = button.dataset.concept;
-    if (!TOPIC_BY_ID[id]) {
-      openSearch(id);
-      return;
-    }
-    location.hash = targetView === 'map' ? `topic/${id}` : `concept/${id}`;
-  }));
+function diagram(code) {
+  return `<figure class="diagram-shell"><div class="mermaid">${esc(code)}</div><details><summary>查看图的文本描述</summary><pre>${esc(code)}</pre></details></figure>`;
 }
+function sectionHtml(section) {
+  return `<section class="reader-section"><h2>${esc(cleanTitle(section.title))}</h2>${section.paragraphs.map(text => `<p>${esc(text)}</p>`).join('')}${section.callout ? `<aside class="callout">${esc(section.callout)}</aside>` : ''}${section.diagram ? diagram(section.diagram) : ''}${section.code ? codeBlock(section.code) : ''}</section>`;
+}
+function table(headers, rows) {
+  return `<div class="table-wrap"><table><thead><tr>${headers.map(cell => `<th>${esc(cell)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${esc(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+function list(items, ordered = false) { const tag = ordered ? 'ol' : 'ul'; return `<${tag}>${items.map(item => `<li>${esc(item)}</li>`).join('')}</${tag}>`; }
+function bookmark(kind, id) { const key = `${kind}/${id}`; return `<button data-bookmark="${esc(key)}" aria-pressed="${learning.bookmarks[key] === true}">${learning.bookmarks[key] ? '已收藏' : '收藏'}</button>`; }
+function topicLinks(ids) { return `<div class="tag-list">${ids.filter(id => TOPIC_BY_ID[id]).map(id => `<a href="#concept/${id}">${esc(TOPIC_BY_ID[id].name)}</a>`).join('')}</div>`; }
+function heading(title, description, extra = '') { return `<header class="page-heading"><div><h1>${esc(title)}</h1><p>${esc(description)}</p></div>${extra}</header>`; }
+function empty(text) { return `<div class="empty-state">${esc(text)}</div>`; }
+function chapterRow(chapter) { return `<a class="chapter-row" href="#chapter/${chapter.id}"><span class="row-number">${chapter.number}</span><span class="row-body"><strong>${esc(chapter.title)}</strong><small>${chapter.sections.length} 个小节 · ${esc(chapter.duration)}</small></span><span class="row-tail ${learning.chapters[chapter.id] ? 'row-done' : ''}">${learning.chapters[chapter.id] ? '已完成' : '开始阅读'}</span></a>`; }
+function stagesHtml(stages = LEARNING_STAGES) { return stages.map((stage, index) => `<section class="stage"><header class="stage-head"><span class="stage-number">${String(index + 1).padStart(2, '0')}</span><div><h3>${esc(stage.title)}</h3><p>${esc(stage.description)}</p></div></header>${stage.ids.map(id => chapterRow(CHAPTER_BY_ID[id])).join('')}</section>`).join(''); }
+function frontierCards() { return MODERN_CHAPTERS.map(chapter => `<a class="content-card" href="#chapter/${chapter.id}"><span class="badge violet">${esc(chapter.tag)}</span><h3>${esc(chapter.title)}</h3><p>${esc(chapter.thesis)}</p><small>${esc(chapter.duration)} · 已核验 ${CONTENT_REVIEW_DATE}</small></a>`).join(''); }
+function renderHome() {
+  const next = COURSE_CHAPTERS.find(chapter => !learning.chapters[chapter.id]) || COURSE_CHAPTERS[0];
+  const last = learning.prefs.lastChapter && CHAPTER_BY_ID[learning.prefs.lastChapter];
+  const resume = last && !learning.chapters[last.id] ? last : next;
+  const completed = COURSE_CHAPTERS.filter(chapter => learning.chapters[chapter.id]).length;
+  const labs = LABS.filter(lab => learning.labs[lab.id]).length;
+  const stats = LearningState.quizStats(QUIZZES_BY_CHAPTER, learning.quizzes);
+  $('#content').innerHTML = `<div class="page">${heading('把 AI Agent，学成自己的能力。', '从第一性原理出发，在代码、实验与真实架构之间建立联系。按自己的节奏，完成每一个学习闭环。')}<div class="dashboard-grid"><div><section class="continue-card"><span class="badge violet">${last ? '继续上次的学习' : '你的第一站'}</span><h2>${esc(resume.title)}</h2><p>${esc(resume.thesis)}</p><div class="inline-actions"><a class="button" href="#chapter/${resume.id}${last?.id === resume.id && learning.prefs.lastUnit ? '/' + esc(learning.prefs.lastUnit) : ''}">${last ? '继续学习' : '开始第一课'} <span aria-hidden="true">→</span></a><a class="text-link" href="#course">查看完整课程</a></div></section><div class="section-heading"><h2>一条循序渐进的学习路径</h2><a class="text-link" href="#map">查看知识地图</a></div>${stagesHtml(LEARNING_STAGES.slice(0,3))}<div class="section-heading"><h2>值得深入的前沿专题</h2><a class="text-link" href="#frontier">查看全部</a></div><div class="frontier-grid">${frontierCards()}</div></div><aside class="dashboard-aside"><section class="panel"><h2>你的学习进度</h2><div class="progress-summary"><b>${completed} / ${COURSE_CHAPTERS.length} 章</b><span>${Math.round(completed / COURSE_CHAPTERS.length * 100)}%</span></div><div class="progress-track" role="progressbar" aria-label="课程完成进度" aria-valuenow="${completed}" aria-valuemin="0" aria-valuemax="${COURSE_CHAPTERS.length}"><span style="width:${completed / COURSE_CHAPTERS.length * 100}%"></span></div><ul class="fact-list"><li>实战实验<b>${labs} / ${LABS.length}</b></li><li>自测答对<b>${stats.correct} / ${stats.answered}</b></li><li>待复习错题<b>${stats.mistakes.length}</b></li></ul><a class="text-link" href="#progress">打开学习记录</a></section><section class="panel reading-tip"><h2>不止是读懂。</h2><p>先解释原理，再运行最小代码。主动制造一次失败，最后用测试和证据说明你修复了什么。</p><a class="text-link" href="#labs">打开实战实验</a></section><section class="panel"><h2>本次内容更新</h2><a class="update-item" href="#chapter/mcp-evolution">MCP 2026 协议迁移<small>版本、发现、请求元数据与兼容性</small></a><a class="update-item" href="#chapter/harness-engineering">长任务 Harness 与 Deep Agents<small>环境、任务清单与跨会话恢复</small></a><a class="update-item" href="#chapter/multimodal-evals">多模态系统与 Agent 评测<small>从最终回答走向过程与环境验收</small></a><small class="quiet-label">一手资料核验：${CONTENT_REVIEW_DATE}</small></section></aside></div></div>`;
+}
+function renderCourse() { $('#content').innerHTML = `<div class="page">${heading('系统课程', '先学会解释系统，再学会构建系统。章节按前置依赖组织；每章包含正文、实现、实验与自测。')}<div class="dashboard-grid"><div>${stagesHtml()}</div><aside class="panel"><h2>如何使用这套课程</h2><p>没有 Agent 经验，从第一阶段开始。有后端经验，可以优先阅读 Runtime、Graph 和生产化，再补模型与检索基础。</p><p>章节显示的是含实验的建议投入时间；正文按小节阅读，可随时离开并继续。</p><a class="text-link" href="#progress">管理进度与笔记</a></aside></div></div>`; }
 
-function setView(view) {
-  activeView = view;
-  document.querySelectorAll('[data-view-panel]').forEach(panel => panel.classList.toggle('active', panel.dataset.viewPanel === view));
-  document.querySelectorAll('[data-view]').forEach(button => {
-    const selected = button.dataset.view === view;
-    button.classList.toggle('active', selected);
-    button.setAttribute('aria-current', selected ? 'page' : 'false');
-  });
-  window.scrollTo({ top: 0, behavior: 'auto' });
+function chapterUnits(chapter) {
+  return [{ id: 'overview', title: '本章导读' }, ...chapter.sections.map((section, index) => ({ id: String(index), title: cleanTitle(section.title) })), ...(DEEP_DIVE_BY_CHAPTER[chapter.id] ? [{ id: 'implementation', title: '实现深读与故障演练' }] : []), { id: 'practice', title: '动手实验与验收' }, { id: 'quiz', title: '自测与复盘' }];
+}
+function deepDiveHtml(dive) {
+  return `<section class="reader-section"><h2>${esc(dive.title)}</h2><p>${esc(dive.premise)}</p><h3>从约束推导实现</h3>${dive.derivation.map(item => `<p>${esc(item)}</p>`).join('')}${diagram(dive.model)}<h3>最小参考实现</h3>${codeBlock(dive.code)}<h3>一次执行轨迹</h3>${list(dive.trace,true)}<h3>故障与修复</h3>${table(['故障','原因','修复'],dive.failures)}<h3>掌握检查</h3>${list(dive.drills,true)}<aside class="callout">${esc(dive.answer)}</aside><h3>映射到开源实现</h3>${table(['项目','路径或符号','阅读重点'],dive.sourceMap)}</section>`;
+}
+function quizQuestion(chapterId, question, index) {
+  const selected = learning.quizzes[chapterId]?.[index];
+  return `<fieldset class="quiz-question" id="quiz-${chapterId}-${index}"><legend>${index + 1}. ${esc(question.q)}</legend><div class="quiz-options">${question.options.map((option, answer) => `<button class="quiz-option ${selected === answer ? (answer === question.answer ? 'correct' : 'wrong') : ''}" data-answer="${answer}" data-question="${index}" data-quiz-chapter="${chapterId}" aria-pressed="${selected === answer}">${esc(option)}</button>`).join('')}</div><div class="quiz-feedback" ${selected === undefined ? 'hidden' : ''} role="status">${selected === undefined ? '' : `<p>${selected === question.answer ? '回答正确。' : '需要再想一想。'}${esc(question.why)}</p>`}</div></fieldset>`;
+}
+function renderChapter(id, unit = 'overview') {
+  const chapter = CHAPTER_BY_ID[id];
+  if (!chapter) return renderNotFound();
+  const units = chapterUnits(chapter);
+  let selected = units.find(item => item.id === unit) || units[0];
+  const position = units.indexOf(selected);
+  learning.prefs.lastChapter = id; learning.prefs.lastUnit = selected.id; save('prefs');
+  let body = '';
+  if (selected.id === 'overview') body = `<section class="objectives"><h2>完成本章后，你应该能够</h2>${list(chapter.objectives)}</section>${diagram(chapter.diagram)}<section class="reader-section"><h2>本章学习顺序</h2>${units.slice(1).map((item,index) => `<a class="chapter-row" href="#chapter/${id}/${item.id}"><span class="row-number">${String(index+1).padStart(2,'0')}</span><span class="row-body"><strong>${esc(item.title)}</strong></span><span aria-hidden="true">→</span></a>`).join('')}</section>${chapter.sources ? sourceLinks(chapter.sources) : ''}`;
+  else if (selected.id === 'implementation') body = deepDiveHtml(DEEP_DIVE_BY_CHAPTER[id]);
+  else if (selected.id === 'practice') body = `<section class="reader-section"><h2>${esc(chapter.lab.title)}</h2><h3>动手步骤</h3>${list(chapter.lab.steps,true)}<h3>验收标准</h3>${list(chapter.lab.acceptance)}<h3>配套实验</h3>${(CHAPTER_LABS[id] || []).map(labId => LAB_BY_ID[labId]).filter(Boolean).map(lab => `<a class="chapter-row" href="#lab/${lab.id}"><span class="badge">${lab.number}</span><span class="row-body"><strong>${esc(lab.title)}</strong><small>${esc((LAB_STATUS[lab.id] || ['无密钥教学实验'])[0])}</small></span></a>`).join('') || '<p>本章实验使用上方设计任务完成，记录你的输入、结果与失败分析。</p>'}</section>`;
+  else if (selected.id === 'quiz') body = `<section class="reader-section"><h2>用问题检验理解</h2><p>选择后查看解析；做错的题会进入“我的学习”，修正答案后自动移出待复习列表。</p>${(QUIZZES_BY_CHAPTER[id] || []).map((question,index) => quizQuestion(id,question,index)).join('')}</section><div class="note-field"><label for="chapter-note">给未来的自己留一条笔记</label><textarea id="chapter-note" maxlength="20000" placeholder="我理解的原理、实验结果、还没想清的问题…">${esc(learning.notes[id] || '')}</textarea><span class="note-status" id="note-status">保存在当前浏览器，可在“我的学习”导出。</span></div><button class="button" data-complete-chapter="${id}" aria-pressed="${!!learning.chapters[id]}">${learning.chapters[id] ? '已完成本章 · 撤销' : '标记本章完成'}</button>`;
+  else body = sectionHtml(chapter.sections[Number(selected.id)]);
+  const nextChapter = COURSE_CHAPTERS[COURSE_CHAPTERS.indexOf(chapter) + 1];
+  $('#content').innerHTML = `<div class="reader-layout"><aside class="reader-index"><details class="lesson-disclosure"><summary>本章目录 · 第 ${chapter.number} 章</summary><nav aria-label="本章小节"><a href="#course">← 返回全部课程</a>${units.map(item => `<a href="#chapter/${id}/${item.id}" class="${item.id === selected.id ? 'active' : ''}" ${item.id === selected.id ? 'aria-current="page"' : ''}>${esc(item.title)}</a>`).join('')}<p class="group-label">相关知识</p>${chapter.topicIds.filter(topicId => TOPIC_BY_ID[topicId]).map(topicId => `<a href="#concept/${topicId}">${esc(TOPIC_BY_ID[topicId].name)}</a>`).join('')}</nav></details></aside><article class="reader-main"><div class="reader-body"><div class="reader-tools"><span>系统课程 / 第 ${chapter.number} 章 / ${position+1} of ${units.length}</span><div>${bookmark('chapter',id)} <button id="font-toggle" aria-label="切换正文大小">${learning.prefs.largeText ? '标准字号' : '大号正文'}</button></div></div><header class="reader-header"><span class="badge violet">${esc(chapter.tag)}</span><h1>${esc(chapter.title)}</h1>${selected.id === 'overview' ? `<p>${esc(chapter.thesis)}</p>` : ''}<div class="reader-meta"><span>${esc(selected.title)}</span><span>${selected.id === 'overview' ? '含实践建议 ' + esc(chapter.duration) : '当前小节 · 可随时继续'}</span></div></header>${body}<nav class="reader-bottom" aria-label="小节翻页">${position > 0 ? `<a class="button secondary" href="#chapter/${id}/${units[position-1].id}">上一节</a>` : '<a class="button secondary" href="#course">课程目录</a>'}${position < units.length-1 ? `<a class="button" href="#chapter/${id}/${units[position+1].id}">下一节：${esc(units[position+1].title)}</a>` : nextChapter ? `<a class="button" href="#chapter/${nextChapter.id}">进入下一章</a>` : '<a class="button" href="#progress">查看学习成果</a>'}</nav></div></article></div>`;
+  $('#chapter-note')?.addEventListener('input', event => { learning.notes[id] = event.target.value; $('#note-status').textContent = save('notes') ? '笔记已保存到当前浏览器。' : '保存失败，请复制笔记并导出备份。'; });
 }
 
 function renderMap() {
-  document.querySelector('#topic-count').textContent = KNOWLEDGE_TOPICS.length;
-  document.querySelector('#glossary-count').textContent = KNOWLEDGE_TOPICS.length;
-  document.querySelector('#chapter-count').textContent = COURSE_CHAPTERS.length;
-  document.querySelector('#project-count').textContent = PROJECT_CASES.length;
-  const rail = document.querySelector('#domain-rail');
-  rail.innerHTML = TECH_DOMAINS.map((domain, index) => {
-    const count = KNOWLEDGE_TOPICS.filter(topic => topic.domain === domain.id).length;
-    return `<button class="domain-link ${activeMapDomain === domain.id ? 'active' : ''}" style="--domain:${domain.color}" data-domain="${domain.id}"><span>${String(index + 1).padStart(2, '0')}</span><strong>${escapeHtml(shortDomainName(domain))}</strong><small>${count}</small></button>`;
-  }).join('');
-  rail.querySelectorAll('[data-domain]').forEach(button => button.addEventListener('click', () => {
-    activeMapDomain = button.dataset.domain;
-    renderMap();
-    document.querySelector(`#domain-${activeMapDomain}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }));
-
-  document.querySelector('#domain-map').innerHTML = TECH_DOMAINS.map((domain, index) => {
-    const topics = KNOWLEDGE_TOPICS.filter(topic => topic.domain === domain.id);
-    return `<section class="domain-block" id="domain-${domain.id}" style="--domain:${domain.color}">
-      <header class="domain-block-head"><span class="domain-number">${String(index + 1).padStart(2, '0')}</span><h3>${escapeHtml(shortDomainName(domain))}</h3><p>${escapeHtml(domain.summary)}</p></header>
-      <div class="topic-nodes">${topics.map((topic, topicIndex) => `<button class="topic-node ${topic.id === activeTopic ? 'active' : ''}" data-map-topic="${topic.id}"><span>${domain.id} / ${String(topicIndex + 1).padStart(2, '0')}</span><strong>${escapeHtml(topic.name)}</strong><small>${escapeHtml(topic.definition)}</small></button>`).join('')}</div>
-    </section>`;
-  }).join('');
-  document.querySelectorAll('[data-map-topic]').forEach(button => button.addEventListener('click', () => { mobileInspectorOpen = true; location.hash = `topic/${button.dataset.mapTopic}`; }));
-  renderMapInspector();
+  $('#content').innerHTML = `<div class="page">${heading('知识地图', '从七个系统层理解技术之间的关系。每个节点都连接到机制、实现、局限与一手资料。')}<div class="filter-bar">${TECH_DOMAINS.map(domain => `<a class="button secondary" href="#map/${domain.id}">${esc(domain.name.replace(/^\d+\s*/,''))}</a>`).join('')}</div>${TECH_DOMAINS.map(domain => `<section class="map-domain" id="domain-${domain.id}"><header><h2>${esc(domain.name)}</h2><p>${esc(domain.summary)}</p></header><div class="topic-grid">${KNOWLEDGE_TOPICS.filter(topic => topic.domain === domain.id).map(topic => `<a class="topic-tile" href="#concept/${topic.id}"><strong>${esc(topic.name)}</strong><small>${esc(topic.definition)}</small></a>`).join('')}</div></section>`).join('')}</div>`;
 }
-
-function renderMapInspector() {
-  const topic = TOPIC_BY_ID[activeTopic] || KNOWLEDGE_TOPICS[0];
-  const domain = domainFor(topic);
-  const inspector = document.querySelector('#map-inspector');
-  inspector.style.setProperty('--topic-color', domain.color);
-  inspector.innerHTML = `<button class="inspector-close" aria-label="关闭详情">×</button>
-    <header class="inspector-head"><span class="topic-code">${escapeHtml(domain.name)} / ${escapeHtml(topic.id)}</span><h2>${escapeHtml(topic.name)}</h2><p>${escapeHtml(topic.definition)}</p></header>
-    <section class="topic-section"><h3>底层机制 / HOW IT WORKS</h3><p>${escapeHtml(topic.mechanism)}</p></section>
-    <section class="topic-section"><h3>工程实现 / HOW TO BUILD</h3><p>${escapeHtml(topic.implementation)}</p></section>
-    <section class="topic-section limit"><h3>局限与失败模式</h3><p>${escapeHtml(topic.limits)}</p></section>
-    <section class="topic-section improve"><h3>优化方向</h3><p>${escapeHtml(topic.improve)}</p></section>
-    <section class="topic-section"><h3>关联知识</h3><div class="tag-list">${topic.related.map(id => topicButton(id)).join('')}</div></section>
-    <section class="topic-section"><h3>一手资料</h3>${sourceLinks(topic.sources)}</section>`;
-  inspector.classList.toggle('open', !window.matchMedia('(max-width: 980px)').matches || mobileInspectorOpen);
-  inspector.querySelector('.inspector-close').addEventListener('click', () => { mobileInspectorOpen = false; inspector.classList.remove('open'); });
-  bindConceptLinks(inspector, 'map');
+function conceptHtml(topic) {
+  const chapter = COURSE_CHAPTERS.find(item => item.topicIds.includes(topic.id));
+  return `<div class="reader-tools"><span>${esc(TECH_DOMAINS.find(domain => domain.id === topic.domain)?.name)}</span>${bookmark('concept',topic.id)}</div><h2 class="detail-title">${esc(topic.name)}</h2><p class="lede">${esc(topic.definition)}</p>${[['底层机制',topic.mechanism],['如何实现',topic.implementation],['局限与失败模式',topic.limits],['优化方向',topic.improve]].map(([title,text]) => sectionHtml({title,paragraphs:[text]})).join('')}<h3>关联知识</h3>${topicLinks(topic.related)}${chapter ? `<h3>放回系统理解</h3><a class="text-link" href="#chapter/${chapter.id}">阅读课程：${esc(chapter.title)}</a>` : ''}<h3>一手资料</h3>${sourceLinks(topic.sources)}`;
 }
-
-function renderQuiz(chapterId) {
-  const questions = QUIZZES_BY_CHAPTER[chapterId] || [];
-  if (!questions.length) return '';
-  const answers = quizProgress[chapterId] || {};
-  const correct = questions.filter((question, index) => answers[index] === question.answer).length;
-  return `<section class="chapter-assessment"><p class="eyebrow">CHECK YOUR UNDERSTANDING / ${correct} / ${questions.length}</p><h2>章节自测</h2><p class="assessment-note">先独立作答；选择后立即看到解释。答错的题目会保留在本浏览器，复习时优先重做。</p>${questions.map((question, index) => `<fieldset class="quiz-question"><legend>${index + 1}. ${escapeHtml(question.q)}</legend><div class="quiz-options">${question.options.map((option, optionIndex) => `<button class="quiz-option ${answers[index] === optionIndex ? (optionIndex === question.answer ? 'correct' : 'wrong') : ''}" data-quiz-chapter="${chapterId}" data-quiz-index="${index}" data-quiz-answer="${optionIndex}">${escapeHtml(option)}</button>`).join('')}</div>${answers[index] !== undefined ? `<p class="quiz-feedback ${answers[index] === question.answer ? 'is-correct' : 'is-wrong'}">${answers[index] === question.answer ? '回答正确。' : '还需要复习。'} ${escapeHtml(question.why)}</p>` : ''}</fieldset>`).join('')}</section>`;
+function renderGlossary(topicId) {
+  $('#content').innerHTML = `<div class="page">${heading('概念辞典', `${KNOWLEDGE_TOPICS.length} 个技术点。遇到陌生概念时，先理解机制，再回到课程中的完整系统。`, '<label class="sr-only" for="glossary-search">搜索概念</label><input class="inline-search" id="glossary-search" type="search" placeholder="搜索概念或实现细节…" />')}<div class="filter-bar" id="glossary-filters"></div><div class="catalog-layout"><nav class="catalog-list" id="glossary-list" aria-label="概念列表"></nav><article class="detail-panel" id="concept-detail"></article></div></div>`;
+  $('#glossary-search').value = glossaryQuery;
+  const update = () => {
+    const topics = KNOWLEDGE_TOPICS.filter(topic => (glossaryDomain === 'all' || topic.domain === glossaryDomain) && JSON.stringify(topic).toLowerCase().includes(glossaryQuery.toLowerCase()));
+    const selected = topics.find(topic => topic.id === topicId) || topics[0];
+    $('#glossary-filters').innerHTML = [{id:'all',name:'全部'},...TECH_DOMAINS].map(domain => `<button class="filter-button ${glossaryDomain===domain.id?'active':''}" data-glossary-filter="${domain.id}">${esc(domain.name.replace(/^\d+\s*/,''))}</button>`).join('');
+    $('#glossary-list').innerHTML = topics.map(topic => `<a class="catalog-link ${selected?.id===topic.id?'active':''}" href="#concept/${topic.id}"><strong>${esc(topic.name)}</strong><small>${esc(topic.definition.slice(0,55))}</small></a>`).join('') || empty('没有匹配的概念。');
+    $('#concept-detail').innerHTML = selected ? conceptHtml(selected) : empty('试试更短的关键词，或切换到全部领域。');
+    $('#glossary-filters').querySelectorAll('button').forEach(button => button.addEventListener('click',()=> { glossaryDomain=button.dataset.glossaryFilter; update(); }));
+  };
+  $('#glossary-search').addEventListener('input',event=> { glossaryQuery=event.target.value; update(); }); update();
 }
-
-function renderChapterNav() {
-  const nav = document.querySelector('#chapter-nav');
-  nav.innerHTML = COURSE_CHAPTERS.map(chapter => `<button class="chapter-tab ${chapter.id === activeChapter ? 'active' : ''}" data-chapter="${chapter.id}"><span>${chapter.number}</span><span><strong>${escapeHtml(chapter.title)}</strong><small>${escapeHtml(chapter.tag)} · ${escapeHtml(chapter.duration)}${progress[chapter.id] ? ' · DONE' : ''}</small></span></button>`).join('');
-  nav.querySelectorAll('[data-chapter]').forEach(button => button.addEventListener('click', () => { location.hash = `chapter/${button.dataset.chapter}`; }));
-  const complete = COURSE_CHAPTERS.filter(chapter => progress[chapter.id]).length;
-  document.querySelector('#progress-label').textContent = `${complete} / ${COURSE_CHAPTERS.length} 章完成`;
-  document.querySelector('#progress-fill').style.width = `${complete / COURSE_CHAPTERS.length * 100}%`;
+function renderLabs(id) {
+  const lab = LAB_BY_ID[id] || LABS[0];
+  const status = LAB_STATUS[lab.id] || ['无密钥教学实验', '用确定性数据验证控制逻辑；完成后再映射到真实 provider 和持久化后端。'];
+  $('#content').innerHTML = `<div class="page">${heading('实战实验', '先运行一个可理解的实现，再验证失败边界。实验标明实现范围，帮助你区分原理练习与真实集成。')}<div class="catalog-layout"><nav class="catalog-list" aria-label="实验目录">${LABS.map(item=>`<a class="catalog-link ${item.id===lab.id?'active':''}" href="#lab/${item.id}"><strong>${item.number} ${esc(item.title)}</strong><small>${learning.labs[item.id]?'已完成 · ':''}${esc((LAB_STATUS[item.id] || ['原理实验'])[0])}</small></a>`).join('')}</nav><article class="detail-panel"><div class="reader-tools"><span>实验 ${lab.number}</span>${bookmark('lab',lab.id)}</div><span class="badge amber">${esc(status[0])}</span><h2 class="detail-title">${esc(lab.title)}</h2><p class="lede">${esc(lab.goal)}</p><aside class="callout"><strong>实现范围：</strong>${esc(status[1])}</aside><h2>运行与验证</h2>${codeBlock('cd ai-agent-learning\n'+lab.commands.join('\n'),'终端 · 在仓库根目录运行')}<h2>验收标准</h2>${list(lab.checks)}<h2>带着问题做实验</h2><ol><li>运行测试，检查每条断言保护了什么约束。</li><li>修改一处边界条件，使测试失败并解释原因。</li><li>记录哪些约束由代码保证，哪些依赖外部系统。</li></ol><div class="inline-actions"><a class="button secondary" href="https://github.com/Serendipity-zsh/ai-agent-learning/blob/main/labs/${esc(lab.source)}" target="_blank" rel="noreferrer">阅读实验源码 ↗</a><button class="button" data-complete-lab="${lab.id}" aria-pressed="${!!learning.labs[lab.id]}">${learning.labs[lab.id]?'已完成实验 · 撤销':'标记实验完成'}</button></div></article></div></div>`;
 }
-
-function renderChapter() {
-  const chapter = CHAPTER_BY_ID[activeChapter] || COURSE_CHAPTERS[0];
-  const deepDive = DEEP_DIVE_BY_CHAPTER[chapter.id];
-  const article = document.querySelector('#chapter-article');
-  const index = COURSE_CHAPTERS.findIndex(item => item.id === chapter.id);
-  article.innerHTML = `<header class="chapter-header">
-      <div class="chapter-kicker"><span>CH ${chapter.number}</span>${escapeHtml(chapter.tag)} · ${escapeHtml(chapter.duration)}</div>
-      <h1>${escapeHtml(chapter.title)}</h1><p class="chapter-thesis">${escapeHtml(chapter.thesis)}</p>
-    </header>
-    <section class="objectives"><h2>完成本章后，你应该能够</h2><ul>${chapter.objectives.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section>
-    <div class="diagram-shell"><span class="diagram-label">SYSTEM MODEL / 本章系统模型</span><div class="mermaid">${escapeHtml(chapter.diagram)}</div></div>
-    ${chapter.sections.map((section, sectionIndex) => `<section class="chapter-section" id="${chapter.id}-section-${sectionIndex}"><h2><span>${String(sectionIndex + 1).padStart(2, '0')}</span>${escapeHtml(section.title)}</h2>${section.paragraphs.map(paragraph => `<p>${escapeHtml(paragraph)}</p>`).join('')}${section.callout ? `<div class="callout">${escapeHtml(section.callout)}</div>` : ''}${section.diagram ? `<div class="diagram-shell"><div class="mermaid">${escapeHtml(section.diagram)}</div></div>` : ''}${section.code ? `<pre><code>${escapeHtml(section.code)}</code></pre>` : ''}</section>`).join('')}
-    ${deepDive ? renderDeepDive(deepDive) : ''}
-    <section class="lab-card"><p class="eyebrow">BUILD / TEST / EXPLAIN</p><h2>${escapeHtml(chapter.lab.title)}</h2><div class="lab-grid"><div><h3>实验步骤</h3><ol>${chapter.lab.steps.map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol></div><div><h3>可验证的验收标准</h3><ul>${chapter.lab.acceptance.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div></div></section>
-    ${renderQuiz(chapter.id)}
-    <div class="chapter-actions"><button class="pager-button" data-page-chapter="${index > 0 ? COURSE_CHAPTERS[index - 1].id : ''}" ${index > 0 ? '' : 'disabled'}>← 上一章</button><button class="complete-chapter ${progress[chapter.id] ? 'done' : ''}" data-complete-chapter="${chapter.id}">${progress[chapter.id] ? '✓ 本章已完成' : '标记本章完成'}</button><button class="pager-button" data-page-chapter="${index < COURSE_CHAPTERS.length - 1 ? COURSE_CHAPTERS[index + 1].id : ''}" ${index < COURSE_CHAPTERS.length - 1 ? '' : 'disabled'}>下一章 →</button></div>`;
-  document.querySelector('#section-toc').innerHTML = chapter.sections.map((section, sectionIndex) => `<button data-section-target="${chapter.id}-section-${sectionIndex}">${escapeHtml(section.title)}</button>`).join('');
-  document.querySelectorAll('[data-section-target]').forEach(button => button.addEventListener('click', () => document.getElementById(button.dataset.sectionTarget)?.scrollIntoView({ behavior: 'smooth', block: 'start' })));
-  document.querySelector('#chapter-topics').innerHTML = chapter.topicIds.map(id => topicButton(id, 'chapter-topic')).join('');
-  bindConceptLinks(document.querySelector('#chapter-topics'));
-  article.querySelector('[data-complete-chapter]').addEventListener('click', () => {
-    progress[chapter.id] = !progress[chapter.id];
-    localStorage.setItem('agent-systems-progress', JSON.stringify(progress));
-    renderChapterNav(); renderChapter();
+function renderProjects(id) {
+  if (!id) {
+    $('#content').innerHTML = `<div class="page">${heading('源码研读', '沿着入口、数据结构、控制流和持久化边界阅读。先理解设计问题，再对照实现细节。')}<aside class="callout">旧快照保留供复现，核验日期见详情；路径映射与设计推导不等于逐行审计。Claude Code 只分析公开资料。</aside><div class="project-cards">${PROJECT_CASES.map(project=>`<a class="content-card" href="#project/${project.id}"><span class="badge">${esc(project.category)}</span><h3>${esc(project.name)}</h3><p>${esc(project.positioning)}</p><small>架构 · 模块 · 调用链 · 局限</small></a>`).join('')}</div><div class="section-heading"><h2>把项目放在同一张架构图上</h2></div>${table(['问题','主要阅读对象','与其他层的关系'],[['如何组合模型与工具','LangChain','高层 Agent 组装，可下沉到 LangGraph'],['如何恢复执行','LangGraph','状态、调度与 checkpoint'],['如何把文档变成证据','LlamaIndex / Haystack','数据与检索管线，可封装为 Agent 工具'],['如何形成长期记忆','Mem0 / Letta','外置记忆服务与有状态 Agent 的不同取舍'],['如何执行长任务','OpenClaw / Hermes / OpenHands','产品运行时、环境与会话管理']])}</div>`; return;
+  }
+  const project = PROJECT_BY_ID[id]; if (!project) return renderNotFound();
+  const reading = PROJECT_SOURCE_READINGS[id], trace = PROJECT_SOURCE_TRACES[id];
+  $('#content').innerHTML = `<div class="reader-layout"><aside class="reader-index"><h2>源码研读</h2><a href="#projects">← 全部项目与对比</a>${PROJECT_CASES.map(item=>`<a href="#project/${item.id}" class="${item.id===id?'active':''}">${esc(item.name)}</a>`).join('')}</aside><article class="reader-main"><div class="reader-body"><div class="reader-tools"><span>${esc(project.category)}</span>${bookmark('project',id)}</div><header class="reader-header"><span class="badge">${esc(project.status)}</span><h1>${esc(project.name)}</h1><p>${esc(project.positioning)}</p></header><section class="reader-section"><h2>整体架构</h2>${diagram(project.architecture)}<h2>每个模块解决什么问题</h2>${table(['模块','职责','具体实现','设计原因'],project.modules.map(module=>[module.name,module.what,module.how,module.why]))}<h2>跟踪一次请求</h2>${list(project.flow,true)}<h2>设计决策</h2>${list(project.decisions)}<h2>局限与改进方向</h2>${list(project.limits)}${list(project.improve)}<h2>和其他项目的关系</h2><p>${esc(project.relations)}</p></section>${reading?`<section class="reader-section"><h2>源码阅读入口</h2><aside class="callout">${esc(reading.ref)}。阅读与证据边界：固定版本用于复现，历史案例已单独标注；路径存在性与逐行行为审计是不同的验证。</aside><p>${esc(reading.chain)}</p>${reading.files.map(file=>`<h3>${esc(file[0])}</h3><p>${esc(file[3])}</p>${sourceLinks([{label:file[1],url:file[2]}])}`).join('')}</section>`:''}${trace?`<section class="reader-section"><h2>${esc(trace.title)}</h2><p>${esc(trace.question)}</p><h3>运行时数据</h3>${list(trace.state)}${trace.steps.map(step=>`<h3>${esc(step[0])}</h3><p>${esc(step[1])}</p><p>${esc(step[2])}</p><aside class="callout">不变量：${esc(step[3])}</aside>`).join('')}<h3>亲手验证</h3>${list(trace.tests,true)}<p>${esc(trace.compare)}</p></section>`:''}<h2>仓库与官方资料</h2>${sourceLinks(project.sources)}</div></article></div>`;
+}
+function renderFrontier() { $('#content').innerHTML=`<div class="page">${heading('前沿专题', '关注改变系统设计的技术，而不追逐未经验证的名词。每个专题包含机制、实现、边界与官方资料。')}<aside class="callout">资料核验日 ${CONTENT_REVIEW_DATE}。协议、SDK 与模型产品独立演进；旧实验标明其固定版本，不把所有示例视为当前 API。</aside><div class="frontier-grid">${frontierCards()}</div><section class="panel" style="margin-top:24px"><h2>理解一项新技术的五个问题</h2>${list(['它改变了模型、数据、协议还是运行时？','它解决的瓶颈能否在现有 trace 中观察到？','能否在同一任务、数据和预算下对比基线？','成功之外，超时、错误、越权和恢复如何处理？','官方能力、教学推导与尚未验证的假设分别是什么？'],true)}</section></div>`; }
+function renderProgress() {
+  const stats = LearningState.quizStats(QUIZZES_BY_CHAPTER,learning.quizzes);
+  const chapters = COURSE_CHAPTERS.filter(chapter=>learning.chapters[chapter.id]).length;
+  const labs = LABS.filter(lab=>learning.labs[lab.id]).length;
+  const saved = Object.keys(learning.bookmarks).filter(key=>learning.bookmarks[key]);
+  const titleFor = key => { const [kind,id]=key.split('/'); return ({chapter:CHAPTER_BY_ID,project:PROJECT_BY_ID,lab:LAB_BY_ID,concept:TOPIC_BY_ID}[kind]?.[id]); };
+  $('#content').innerHTML=`<div class="page">${heading('我的学习', '完成记录、错题、收藏和笔记都在这里。数据保存在当前浏览器，建议定期导出备份。')}<div class="metric-row"><div class="panel"><b>${chapters}<small> / ${COURSE_CHAPTERS.length}</small></b><small>章节完成</small></div><div class="panel"><b>${labs}<small> / ${LABS.length}</small></b><small>实验完成</small></div><div class="panel"><b>${stats.correct}<small> / ${stats.answered}</small></b><small>自测答对 · 当前 ${stats.mistakes.length} 道待复习</small></div></div><div class="dashboard-grid"><div class="panel"><h2>待复习的错题</h2>${stats.mistakes.length?stats.mistakes.map(item=>`<article class="review-item"><span class="badge">第 ${CHAPTER_BY_ID[item.chapterId].number} 章</span><h3>${esc(item.question.q)}</h3><p>你的选择：${esc(item.question.options[item.answer])}</p><a class="text-link" href="#chapter/${item.chapterId}/quiz">返回自测并订正</a></article>`).join(''):empty(stats.answered?'目前没有错题。可以继续下一章。':'完成章节自测后，错题会出现在这里。')}<div class="section-heading"><h2>章节笔记</h2></div>${Object.entries(learning.notes).filter(([id,note])=>CHAPTER_BY_ID[id]&&note.trim()).map(([id,note])=>`<article class="review-item"><a href="#chapter/${id}/quiz">${esc(CHAPTER_BY_ID[id].title)}</a><p style="white-space:pre-wrap">${esc(note)}</p></article>`).join('') || empty('在章节“自测与复盘”中记下你的理解。')}</div><aside class="dashboard-aside"><section class="panel"><h2>备份与恢复</h2><p>导入会合并同名记录，备份内的对应字段优先。导入前会先校验格式。</p><div class="inline-actions"><button class="button" id="export-progress">导出记录</button><label class="button secondary" for="import-progress">导入备份</label><input class="sr-only" type="file" id="import-progress" accept="application/json,.json" /></div><p id="import-status" role="status"></p></section><section class="panel"><h2>我的收藏</h2>${saved.map(key=>{const item=titleFor(key);return item?`<a class="update-item" href="#${esc(key)}">${esc(item.title||item.name)}</a>`:'';}).join('') || '<p>在课程、实验、概念与项目详情点击“收藏”。</p>'}</section></aside></div></div>`;
+  $('#export-progress').addEventListener('click',()=> {
+    const payload={version:1,exportedAt:new Date().toISOString(),...Object.fromEntries(['chapters','labs','quizzes','notes','bookmarks'].map(name=>[name,learning[name]]))};
+    const url=URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}));
+    const link=document.createElement('a');link.href=url;link.download='agent-systems-learning.json';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
-  article.querySelectorAll('[data-page-chapter]').forEach(button => button.addEventListener('click', () => {
-    if (button.dataset.pageChapter) location.hash = `chapter/${button.dataset.pageChapter}`;
-  }));
-  article.querySelectorAll('[data-quiz-answer]').forEach(button => button.addEventListener('click', () => {
-    const chapterAnswers = quizProgress[button.dataset.quizChapter] || {};
-    chapterAnswers[button.dataset.quizIndex] = Number(button.dataset.quizAnswer);
-    quizProgress[button.dataset.quizChapter] = chapterAnswers;
-    localStorage.setItem('agent-systems-quiz-progress', JSON.stringify(quizProgress));
-    renderChapter();
-  }));
-  renderMermaid(article);
-}
-
-function renderDeepDive(dive) {
-  return `<section class="deep-dive"><header><p class="eyebrow">${escapeHtml(dive.label)} / IMPLEMENTATION LAB</p><h2>${escapeHtml(dive.title)}</h2><p>${escapeHtml(dive.premise)}</p></header>
-    <section class="deep-section"><h3>从第一性原理推导</h3>${dive.derivation.map(item => `<p>${escapeHtml(item)}</p>`).join('')}</section>
-    <div class="diagram-shell"><span class="diagram-label">EXECUTION MODEL</span><div class="mermaid">${escapeHtml(dive.model)}</div></div>
-    <section class="deep-section"><h3>最小参考实现</h3><pre><code>${escapeHtml(dive.code)}</code></pre></section>
-    <section class="deep-section"><h3>一次运行的 Trace</h3><ol class="flow-list">${dive.trace.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ol></section>
-    <section class="deep-section"><h3>故障注入与修复</h3><div class="failure-table"><table><thead><tr><th>故障</th><th>它为什么发生</th><th>工程修复</th></tr></thead><tbody>${dive.failures.map(row => `<tr>${row.map(cell => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>
-    <section class="deep-section"><h3>掌握检查</h3><ol class="drill-list">${dive.drills.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ol><div class="answer-key"><strong>判题标准：</strong>${escapeHtml(dive.answer)}</div></section>
-    <section class="deep-section"><h3>映射到开源实现：按调用链阅读</h3><div class="source-map">${dive.sourceMap.map(row => `<article><strong>${escapeHtml(row[0])}</strong><code>${escapeHtml(row[1])}</code><p>${escapeHtml(row[2])}</p></article>`).join('')}</div></section>
-  </section>`;
-}
-
-function renderCourse() { renderChapterNav(); renderChapter(); }
-
-function conceptArticle(topic) {
-  const domain = domainFor(topic);
-  return `<header class="concept-header" style="--topic-color:${domain.color}"><span>${escapeHtml(domain.name)} / ${escapeHtml(topic.id)}</span><h2>${escapeHtml(topic.name)}</h2><p>${escapeHtml(topic.definition)}</p></header>
-    <div class="concept-grid">
-      <section class="topic-section"><h3>01 · 底层机制</h3><p>${escapeHtml(topic.mechanism)}</p></section>
-      <section class="topic-section"><h3>02 · 工程实现</h3><p>${escapeHtml(topic.implementation)}</p></section>
-      <section class="topic-section limit"><h3>03 · 局限与失败模式</h3><p>${escapeHtml(topic.limits)}</p></section>
-      <section class="topic-section improve"><h3>04 · 优化方向</h3><p>${escapeHtml(topic.improve)}</p></section>
-    </div>
-    <section class="topic-section"><h3>关联知识</h3><div class="tag-list">${topic.related.map(id => topicButton(id)).join('')}</div></section>
-    <section class="topic-section"><h3>一手资料 / SOURCE</h3>${sourceLinks(topic.sources)}</section>`;
-}
-
-function renderGlossary() {
-  const filters = document.querySelector('#glossary-filters');
-  filters.innerHTML = `<button class="filter-button ${activeGlossaryDomain === 'all' ? 'active' : ''}" data-filter="all">全部 · ${KNOWLEDGE_TOPICS.length}</button>${TECH_DOMAINS.map(domain => `<button class="filter-button ${activeGlossaryDomain === domain.id ? 'active' : ''}" data-filter="${domain.id}">${escapeHtml(shortDomainName(domain))} · ${KNOWLEDGE_TOPICS.filter(topic => topic.domain === domain.id).length}</button>`).join('')}`;
-  filters.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { activeGlossaryDomain = button.dataset.filter; renderGlossary(); }));
-  const query = document.querySelector('#glossary-search').value.trim().toLowerCase();
-  const domainRank = Object.fromEntries(TECH_DOMAINS.map((domain, index) => [domain.id, index]));
-  const matchRank = topic => !query ? 1 : topic.name.toLowerCase() === query ? 100 : topic.name.toLowerCase().startsWith(query) ? 80 : topic.id.includes(query) ? 70 : JSON.stringify(topic).toLowerCase().includes(query) ? 20 : 0;
-  const topics = KNOWLEDGE_TOPICS.filter(topic => (activeGlossaryDomain === 'all' || topic.domain === activeGlossaryDomain) && matchRank(topic)).sort((a, b) => matchRank(b) - matchRank(a) || domainRank[a.domain] - domainRank[b.domain]);
-  if (topics.length && !topics.some(topic => topic.id === activeTopic)) activeTopic = topics[0].id;
-  document.querySelector('#glossary-index').innerHTML = topics.length ? topics.map(topic => {
-    const domain = domainFor(topic);
-    return `<button class="glossary-card ${topic.id === activeTopic ? 'active' : ''}" style="--topic-color:${domain.color}" data-glossary-topic="${topic.id}"><span>${escapeHtml(shortDomainName(domain))}</span><strong>${escapeHtml(topic.name)}</strong><small>${escapeHtml(topic.definition)}</small></button>`;
-  }).join('') : '<div class="empty-result">没有匹配的概念。试试“状态”“检索”或“权限”。</div>';
-  document.querySelectorAll('[data-glossary-topic]').forEach(button => button.addEventListener('click', () => { location.hash = `concept/${button.dataset.glossaryTopic}`; }));
-  if (!topics.length) { document.querySelector('#concept-article').innerHTML = '<div class="empty-detail"><h2>没有匹配的词条</h2><p>试试英文术语、实现名或更短的关键词。</p></div>'; return; }
-  renderConceptArticle();
-}
-
-function renderConceptArticle() {
-  const topic = TOPIC_BY_ID[activeTopic] || KNOWLEDGE_TOPICS[0];
-  const article = document.querySelector('#concept-article');
-  article.style.setProperty('--topic-color', domainFor(topic).color);
-  article.innerHTML = conceptArticle(topic);
-  bindConceptLinks(article);
-}
-
-function renderProjectIndex() {
-  const groups = [...new Set(PROJECT_CASES.map(project => project.category))];
-  document.querySelector('#project-index').innerHTML = groups.map(group => `<div class="project-group">${escapeHtml(group)}</div>${PROJECT_CASES.filter(project => project.category === group).map(project => `<button class="project-tab ${project.id === activeProject ? 'active' : ''}" data-project="${project.id}"><strong>${escapeHtml(project.name)}</strong><small>${escapeHtml(project.status)}</small></button>`).join('')}`).join('');
-  document.querySelectorAll('[data-project]').forEach(button => button.addEventListener('click', () => { location.hash = `project/${button.dataset.project}`; }));
-}
-
-function renderProject() {
-  const project = PROJECT_BY_ID[activeProject] || PROJECT_CASES[0];
-  const reading = PROJECT_SOURCE_READINGS[project.id];
-  const trace = PROJECT_SOURCE_TRACES[project.id];
-  const article = document.querySelector('#project-article');
-  const sourceRef = PROJECT_SOURCE_REFS[project.id];
-  article.innerHTML = `<header class="project-title-row"><div><p class="eyebrow">${escapeHtml(project.category)} / ARCHITECTURE</p><h1>${escapeHtml(project.name)}</h1><p>${escapeHtml(project.relations)}</p></div><span class="status-badge">${escapeHtml(project.status)}<br /><small>${sourceRef === 'closed-source-public-docs' ? '公开资料边界' : `源码 ${sourceRef.slice(0, 7)}`}</small></span></header>
-    <div class="project-positioning"><strong>项目定位：</strong>${escapeHtml(project.positioning)}</div>
-    <section class="project-section"><h2>整体架构</h2><div class="diagram-shell"><div class="mermaid">${escapeHtml(project.architecture)}</div></div></section>
-    <section class="project-section"><h2>模块级源码解读</h2><table class="module-table"><thead><tr><th>模块 / 路径</th><th>做什么</th><th>怎么实现</th><th>为什么这样设计</th></tr></thead><tbody>${project.modules.map(module => `<tr><td>${escapeHtml(module.name)}</td><td>${escapeHtml(module.what)}</td><td>${escapeHtml(module.how)}</td><td>${escapeHtml(module.why)}</td></tr>`).join('')}</tbody></table></section>
-    <section class="project-section"><h2>一次请求如何流动</h2><ol class="flow-list">${project.flow.map(step => `<li>${escapeHtml(step)}</li>`).join('')}</ol></section>
-    <section class="project-section"><h2>关键设计决策</h2><ul class="decision-list">${project.decisions.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section>
-    <section class="project-section"><div class="risk-grid"><div class="risk-box"><h3>LIMITATIONS / 局限</h3><ul>${project.limits.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div><div class="risk-box improvement"><h3>NEXT / 优化方向</h3><ul>${project.improve.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></div></div></section>
-    ${reading ? `<section class="project-section source-reading"><h2>固定源码快照与调用链</h2><p><strong>阅读链：</strong>${escapeHtml(reading.chain)}</p><p class="source-ref">${escapeHtml(reading.ref)}。快照用于本课程定位；学习时如切换到新版，请重新核验路径与行为。</p><div class="reading-files">${reading.files.map(file => `<a href="${escapeHtml(file[2])}" target="_blank" rel="noreferrer"><strong>${escapeHtml(file[0])}</strong><code>${escapeHtml(file[1])}</code><span>${escapeHtml(file[3])}</span></a>`).join('')}</div></section>` : ''}
-    ${trace ? renderProjectTrace(trace) : ''}
-    <section class="project-section"><h2>源码与官方资料</h2>${sourceLinks(project.sources)}</section>`;
-  const related = (RELATION_LINKS[project.id] || []).map(id => PROJECT_BY_ID[id]).filter(Boolean);
-  document.querySelector('#compare-panel').innerHTML = `<p class="eyebrow">RELATIONSHIP</p><h2>它与其他项目的关系</h2><div class="relation-card"><p>${escapeHtml(project.relations)}</p></div>${related.length ? `<div class="compare-links"><span class="eyebrow">继续对照阅读</span>${related.map(item => `<button data-related-project="${item.id}"><strong>${escapeHtml(item.name)}</strong><br />${escapeHtml(item.category)}</button>`).join('')}</div>` : ''}<div class="relation-card"><p><strong>推荐阅读顺序：</strong><br />先看定位与架构，再沿模块路径进入源码，最后用请求流程验证自己的理解。</p></div>`;
-  document.querySelectorAll('[data-related-project]').forEach(button => button.addEventListener('click', () => { location.hash = `project/${button.dataset.relatedProject}`; }));
-  renderMermaid(article);
-}
-
-function renderProjectTrace(trace) {
-  return `<section class="project-section source-trace"><header><p class="eyebrow">CODE WALKTHROUGH / TRACE THE RUNTIME</p><h2>${escapeHtml(trace.title)}</h2><p>${escapeHtml(trace.question)}</p></header><section><h3>先画出运行时数据</h3><ul class="state-list">${trace.state.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section><section><h3>按调用链阅读</h3><div class="trace-steps">${trace.steps.map((step, index) => `<article><span>${String(index + 1).padStart(2, '0')}</span><div><h4>${escapeHtml(step[0])}</h4><p><strong>读：</strong>${escapeHtml(step[1])}</p><p><strong>变：</strong>${escapeHtml(step[2])}</p><p class="trace-invariant"><strong>不变量：</strong>${escapeHtml(step[3])}</p></div></article>`).join('')}</div></section><section><h3>你应该亲手验证的测试</h3><ol class="flow-list">${trace.tests.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ol></section><section class="trace-compare"><h3>与其他项目的边界差异</h3><p>${escapeHtml(trace.compare)}</p></section></section>`;
-}
-
-function renderProjects() { renderProjectIndex(); renderProject(); }
-
-function renderLabs() {
-  const lab = LAB_BY_ID[activeLab] || LABS[0];
-  const completedLabs = LABS.filter(item => labProgress[item.id]).length;
-  document.querySelector('#lab-path').innerHTML = LABS.map(item => `<button class="lab-path-step ${item.id === lab.id ? 'active' : ''}" data-lab="${item.id}">${item.number}</button>`).join('');
-  document.querySelector('#lab-index').innerHTML = LABS.map(item => `<button class="lab-tab ${item.id === lab.id ? 'active' : ''}" data-lab="${item.id}"><span>LAB ${item.number}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.chapter)}</small></button>`).join('');
-  document.querySelector('#lab-article').innerHTML = `<header class="lab-detail-head"><p class="eyebrow">LAB ${lab.number} / ${escapeHtml(lab.chapter)} · ${completedLabs} / ${LABS.length} 已完成</p><h1>${escapeHtml(lab.title)}</h1><p>${escapeHtml(lab.goal)}</p></header><section class="project-section"><h2>你将建立的能力</h2><div class="tag-list">${lab.concepts.map(name => `<span class="tag-button">${escapeHtml(name)}</span>`).join('')}</div></section><section class="project-section"><h2>运行与验证</h2><pre><code>cd ai-agent-learning\n${escapeHtml(lab.commands.join('\n'))}</code></pre><h3>验收标准</h3><ul class="decision-list">${lab.checks.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul></section><section class="project-section"><h2>学习顺序</h2><ol class="flow-list"><li>先阅读实验说明和失败场景。</li><li>运行测试，观察约束的可执行定义。</li><li>修改实现使一个测试失败，再解释为什么它是安全边界。</li><li>最后把相同契约映射回课程和开源项目。</li></ol></section><div class="lab-completion"><button class="complete-lab ${labProgress[lab.id] ? 'done' : ''}" data-complete-lab="${lab.id}">${labProgress[lab.id] ? '✓ 已完成本实验' : '标记实验完成'}</button><span>完成状态仅保存在当前浏览器</span></div><a class="lab-source-link" href="https://github.com/Serendipity-zsh/ai-agent-learning/blob/main/labs/${escapeHtml(lab.source)}" target="_blank" rel="noreferrer">阅读实验说明与源码 ↗</a>`;
-  document.querySelector('[data-complete-lab]').addEventListener('click', () => {
-    labProgress[lab.id] = !labProgress[lab.id];
-    localStorage.setItem('agent-systems-lab-progress', JSON.stringify(labProgress));
-    renderLabs();
+  $('#import-progress').addEventListener('change',async event=> {
+    const file=event.target.files[0]; if(!file)return;
+    try {
+      if(file.size>2_000_000)throw new Error('备份文件不能超过 2 MB。');
+      const data=LearningState.validateBackup(JSON.parse(await file.text()),COURSE_CHAPTERS.map(item=>item.id),LABS.map(item=>item.id));
+      let persisted=true;
+      for(const name of ['chapters','labs','quizzes','notes','bookmarks']) { Object.assign(learning[name],data[name]); persisted=save(name)&&persisted; }
+      renderProgress(); $('#import-status').textContent=persisted?'记录已导入并保存。':'记录已导入内存，但浏览器保存失败，请立即导出备份。';
+    }catch(error){$('#import-status').textContent=`导入失败：${error.message}`;}
   });
-  document.querySelectorAll('[data-lab]').forEach(button => button.addEventListener('click', () => { location.hash = `lab/${button.dataset.lab}`; }));
 }
+function renderNotFound() { $('#content').innerHTML=`<div class="page">${heading('这个学习页面不存在', '旧版课程和概念链接仍可使用。你可以回到学习中心，或搜索想找的内容。')}<a class="button" href="#home">返回学习中心</a></div>`; }
 
-function searchCorpus(query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  const makeResults = (items, kind, title, summary, hash) => items.map(item => {
-    const heading = title(item).toLowerCase(); const id = item.id.toLowerCase(); const body = JSON.stringify(item).toLowerCase();
-    const score = heading === q ? 100 : id === q ? 96 : heading.startsWith(q) ? 84 : id.startsWith(q) ? 78 : body.includes(q) ? 20 : 0;
-    return score ? { kind, id: item.id, title: title(item), summary: summary(item), hash: hash(item), score } : null;
-  }).filter(Boolean);
-  return [
-    ...makeResults(KNOWLEDGE_TOPICS, '概念', item => item.name, item => item.definition, item => `concept/${item.id}`),
-    ...makeResults(COURSE_CHAPTERS, '课程', item => `${item.number} · ${item.title}`, item => item.thesis, item => `chapter/${item.id}`),
-    ...makeResults(PROJECT_CASES, '源码', item => item.name, item => item.positioning, item => `project/${item.id}`),
-    ...makeResults(LABS, '实验', item => item.title, item => item.goal, item => `lab/${item.id}`)
-  ].sort((a, b) => b.score - a.score || a.kind.localeCompare(b.kind, 'zh-CN')).slice(0, 40);
+const searchIndex = [
+  ...KNOWLEDGE_TOPICS.map(item=>({title:item.name,text:JSON.stringify(item),kind:'概念',hash:`concept/${item.id}`})),
+  ...COURSE_CHAPTERS.flatMap(item=>[{title:item.title,text:item.thesis,kind:'课程',hash:`chapter/${item.id}`},...item.sections.map((section,index)=>({title:cleanTitle(section.title),text:section.paragraphs.join(' '),kind:'小节',hash:`chapter/${item.id}/${index}`}))]),
+  ...DEEP_DIVES.map(item=>({title:item.title,text:JSON.stringify(item),kind:'实现',hash:`chapter/${item.chapterId}/implementation`})),
+  ...PROJECT_CASES.map(item=>({title:item.name,text:JSON.stringify(item)+' '+JSON.stringify(PROJECT_SOURCE_TRACES[item.id]||{}),kind:'源码',hash:`project/${item.id}`})),
+  ...LABS.map(item=>({title:item.title,text:JSON.stringify(item),kind:'实验',hash:`lab/${item.id}`}))
+];
+function search(query) {
+  const words=query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if(!words.length)return [];
+  return searchIndex.map(item=>{const title=item.title.toLowerCase(),text=(item.title+' '+item.text).toLowerCase();const score=words.every(word=>text.includes(word))?words.reduce((score,word)=>score+(title===word?100:title.includes(word)?30:4),0):0;return {...item,score};}).filter(item=>item.score).sort((a,b)=>b.score-a.score).slice(0,30);
 }
-
-function openSearch(initial = '') {
-  lastSearchTrigger = document.activeElement;
-  const layer = document.querySelector('#search-layer');
-  layer.hidden = false;
-  const input = document.querySelector('#global-search');
-  input.value = initial;
-  renderSearchResults();
-  requestAnimationFrame(() => input.focus());
+function renderSearch() {
+  const query=$('#global-search').value;const results=search(query);searchSelection=0;
+  $('#search-hint').textContent=query.trim()?`${results.length} 条结果 · 匹配课程正文、概念、实验与源码`:'试试“幂等”“MCP 2026”“RAG”或“checkpoint”。';
+  $('#search-results').innerHTML=results.length?results.map((item,index)=>`<a class="search-result ${index===0?'selected':''}" href="#${item.hash}"><span class="badge">${item.kind}</span> <strong>${esc(item.title)}</strong><p>${esc(item.text.replace(/[{}"\[\]]/g,' ').slice(0,120))}</p></a>`).join(''):empty(query.trim()?'没有匹配结果，试试更短的关键词或英文名称。':'输入关键词，找到你需要的那一节。');
 }
-
-function closeSearch() { document.querySelector('#search-layer').hidden = true; lastSearchTrigger?.focus?.(); }
-
-function renderSearchResults() {
-  const input = document.querySelector('#global-search');
-  const results = searchCorpus(input.value);
-  document.querySelector('#search-hint').textContent = input.value.trim() ? `找到 ${results.length} 条结果，标题精确命中优先显示。` : `输入关键词，检索 ${KNOWLEDGE_TOPICS.length} 个技术点、${COURSE_CHAPTERS.length} 章课程、${LABS.length} 个实验与 ${PROJECT_CASES.length} 个项目案例。`;
-  searchSelection = results.length ? 0 : -1;
-  document.querySelector('#search-results').innerHTML = results.length ? results.map((result, index) => `<button class="search-result ${index === 0 ? 'selected' : ''}" role="option" aria-selected="${index === 0}" data-result-hash="${result.hash}"><span>${result.kind}</span><span><strong>${escapeHtml(result.title)}</strong><small>${escapeHtml(result.summary)}</small></span></button>`).join('') : '<p class="empty-search">没有匹配结果。请改用更短关键词或英文实现名。</p>';
-  document.querySelectorAll('[data-result-hash]').forEach(button => button.addEventListener('click', () => { closeSearch(); location.hash = button.dataset.resultHash; }));
+function openSearch() { if(!$('#search-dialog').open)$('#search-dialog').showModal();renderSearch();$('#global-search').focus(); }
+const mobileLayout = window.matchMedia('(max-width:760px)');
+function setMenu(open, restoreFocus = false) {
+  $('#site-sidebar').classList.toggle('open', open);
+  $('#site-sidebar').inert = mobileLayout.matches && !open;
+  $('.site-frame').inert = mobileLayout.matches && open;
+  $('#nav-scrim').hidden = !open;
+  $('#menu-toggle').setAttribute('aria-expanded',open);
+  if(open)$('#menu-close').focus();else if(restoreFocus)$('#menu-toggle').focus();
 }
-
+function closeMenu(restoreFocus = false) { setMenu(false,restoreFocus); }
+function applyPreferences() { document.documentElement.dataset.theme=learning.prefs.theme||'light';document.documentElement.style.setProperty('--reading-size',learning.prefs.largeText?'19px':'17px');$('#theme-toggle').textContent=learning.prefs.theme==='dark'?'浅色模式':'深色模式';$('#theme-toggle').setAttribute('aria-label',learning.prefs.theme==='dark'?'切换浅色模式':'切换深色模式'); }
+function renderDiagrams() {
+  const nodes=$('#content').querySelectorAll('.mermaid:not([data-processed])');
+  if(!nodes.length)return;
+  if(!window.mermaid){
+    if(!mermaidLoading){mermaidLoading=true;const script=document.createElement('script');script.src='https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js';script.addEventListener('load',renderDiagrams);script.addEventListener('error',()=>{mermaidLoading=false;announce('架构图组件未加载，可展开文本描述。');});document.head.append(script);}
+    return;
+  }
+  const dark=learning.prefs.theme==='dark';
+  window.mermaid.initialize({startOnLoad:false,securityLevel:'strict',theme:dark?'dark':'neutral',flowchart:{htmlLabels:false}});
+  if(nodes.length)window.mermaid.run({nodes,suppressErrors:true}).catch(()=>announce('部分架构图未渲染，可展开文本描述。'));
+}
 function route() {
-  const [kind = 'map', id] = location.hash.replace(/^#/, '').split('/');
-  if (kind === 'topic' && TOPIC_BY_ID[id]) { activeTopic = id; setView('map'); renderMap(); return; }
-  if (kind === 'concept' && TOPIC_BY_ID[id]) { activeTopic = id; activeGlossaryDomain = 'all'; setView('glossary'); renderGlossary(); return; }
-  if (kind === 'chapter' && CHAPTER_BY_ID[id]) { activeChapter = id; setView('course'); renderCourse(); return; }
-  if (kind === 'lab' && LAB_BY_ID[id]) { activeLab = id; setView('labs'); renderLabs(); return; }
-  if (kind === 'project' && PROJECT_BY_ID[id]) { activeProject = id; setView('projects'); renderProjects(); return; }
-  if (['map', 'course', 'labs', 'glossary', 'projects'].includes(kind)) { setView(kind); if (kind === 'map') renderMap(); if (kind === 'course') renderCourse(); if (kind === 'labs') renderLabs(); if (kind === 'glossary') renderGlossary(); if (kind === 'projects') renderProjects(); return; }
-  location.hash = 'map';
+  const raw=location.hash.slice(1)||'home'; const [kind,id,unit]=raw.split('/');
+  const view=({chapter:'course',concept:'glossary',topic:'glossary',lab:'labs',project:'projects'})[kind]||kind;
+  const nav=navigation.find(item=>item[0]===view);
+  $('#main-nav').innerHTML=`<div class="nav-label">学习空间</div>${navigation.map(([key,label,symbol])=>`<a class="nav-link ${key===view?'active':''}" href="#${key}" ${key===view?'aria-current="page"':''}><span class="nav-symbol" aria-hidden="true">${symbol}</span>${label}</a>`).join('')}`;
+  $('#breadcrumbs').textContent=nav?nav[1]:'学习中心';
+  if(kind==='home')renderHome(); else if(kind==='course')renderCourse(); else if(kind==='chapter')renderChapter(id,unit); else if(kind==='map')renderMap(); else if(kind==='glossary')renderGlossary(); else if(kind==='concept'||kind==='topic'){glossaryQuery='';glossaryDomain='all';if(TOPIC_BY_ID[id])renderGlossary(id);else renderNotFound();} else if(kind==='labs'||kind==='lab')renderLabs(id); else if(kind==='projects'||kind==='project')renderProjects(id); else if(kind==='frontier')renderFrontier(); else if(kind==='progress')renderProgress(); else renderNotFound();
+  document.title=($('#content .detail-title')?.textContent||$('#content h1')?.textContent||'学习中心')+' · Agent Systems';
+  closeMenu();applyPreferences();renderDiagrams();
+  if(activeRoute!==raw) { window.scrollTo(0,0); if(activeRoute)$('#content').focus({preventScroll:true}); }
+  activeRoute=raw;
+  if(kind==='map'&&id)document.getElementById('domain-'+id)?.scrollIntoView();
 }
-
-document.querySelectorAll('[data-view]').forEach(button => button.addEventListener('click', () => { location.hash = button.dataset.view; }));
-document.querySelector('#search-trigger').addEventListener('click', () => openSearch());
-document.querySelector('#search-close').addEventListener('click', closeSearch);
-document.querySelector('#search-layer').addEventListener('click', event => { if (event.target.id === 'search-layer') closeSearch(); });
-document.querySelector('#global-search').addEventListener('input', renderSearchResults);
-document.querySelector('#glossary-search').addEventListener('input', renderGlossary);
-document.addEventListener('keydown', event => {
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); openSearch(); }
-  const open = !document.querySelector('#search-layer').hidden;
-  if (event.key === 'Escape' && open) closeSearch();
-  if (!open || !['ArrowDown', 'ArrowUp', 'Enter'].includes(event.key)) return;
-  const items = [...document.querySelectorAll('.search-result')];
-  if (event.key === 'Enter' && searchSelection >= 0) { event.preventDefault(); items[searchSelection]?.click(); return; }
-  event.preventDefault();
-  searchSelection = event.key === 'ArrowDown' ? Math.min(searchSelection + 1, items.length - 1) : Math.max(searchSelection - 1, 0);
-  items.forEach((item, index) => { const selected = index === searchSelection; item.classList.toggle('selected', selected); item.setAttribute('aria-selected', selected); });
-  items[searchSelection]?.scrollIntoView({ block: 'nearest' });
+$('#content').addEventListener('click',async event=> {
+  const button=event.target.closest('button'); if(!button)return;
+  if(button.matches('[data-bookmark]')) { const key=button.dataset.bookmark;learning.bookmarks[key]=!learning.bookmarks[key];save('bookmarks');button.textContent=learning.bookmarks[key]?'已收藏':'收藏';button.setAttribute('aria-pressed',learning.bookmarks[key]); }
+  if(button.matches('[data-complete-chapter]')) { const id=button.dataset.completeChapter;learning.chapters[id]=!learning.chapters[id];save('chapters');button.textContent=learning.chapters[id]?'已完成本章 · 撤销':'标记本章完成';button.setAttribute('aria-pressed',!!learning.chapters[id]);announce(button.textContent); }
+  if(button.matches('[data-complete-lab]')) { const id=button.dataset.completeLab;learning.labs[id]=!learning.labs[id];save('labs');button.textContent=learning.labs[id]?'已完成实验 · 撤销':'标记实验完成';button.setAttribute('aria-pressed',!!learning.labs[id]); }
+  if(button.matches('[data-answer]')) {
+    const {quizChapter:id,question:index,answer}=button.dataset;const question=QUIZZES_BY_CHAPTER[id][Number(index)];
+    if(!learning.quizzes[id]||typeof learning.quizzes[id]!=='object')learning.quizzes[id]={};learning.quizzes[id][index]=Number(answer);save('quizzes');
+    const fieldset=button.closest('fieldset');fieldset.querySelectorAll('[data-answer]').forEach(option=> {const chosen=option===button;option.classList.toggle('correct',chosen&&Number(answer)===question.answer);option.classList.toggle('wrong',chosen&&Number(answer)!==question.answer);option.setAttribute('aria-pressed',chosen);});
+    const feedback=fieldset.querySelector('.quiz-feedback');feedback.hidden=false;feedback.innerHTML=`<p>${Number(answer)===question.answer?'回答正确。':'需要再想一想。'}${esc(question.why)}</p>`;
+  }
+  if(button.id==='font-toggle') { learning.prefs.largeText=!learning.prefs.largeText;save('prefs');applyPreferences();button.textContent=learning.prefs.largeText?'标准字号':'大号正文'; }
+  if(button.classList.contains('copy-code')) { const text=button.closest('.code-shell').querySelector('code').textContent;try{await navigator.clipboard.writeText(text);button.textContent='已复制';}catch{button.textContent='请选中代码复制';} }
 });
-window.addEventListener('hashchange', route);
-
+document.querySelectorAll('[data-open-search]').forEach(button=>button.addEventListener('click',openSearch));
+$('#search-close').addEventListener('click',()=>$('#search-dialog').close());
+$('#search-dialog').addEventListener('click',event=>{if(event.target.closest('.search-result'))$('#search-dialog').close();});
+$('#global-search').addEventListener('input',renderSearch);
+$('#global-search').addEventListener('keydown',event=> {
+  const results=[...document.querySelectorAll('.search-result')];if(!results.length)return;
+  if(event.key==='Enter'){event.preventDefault();results[searchSelection].click();}
+  if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();searchSelection=(searchSelection+(event.key==='ArrowDown'?1:-1)+results.length)%results.length;results.forEach((result,index)=>result.classList.toggle('selected',index===searchSelection));results[searchSelection].scrollIntoView({block:'nearest'});}
+});
+document.addEventListener('keydown',event=> {
+  if((event.metaKey||event.ctrlKey)&&event.key.toLowerCase()==='k'){event.preventDefault();openSearch();}
+  if(event.key==='Escape'&&$('#site-sidebar').classList.contains('open')&&!$('#search-dialog').open)closeMenu(true);
+  if(event.key==='Tab'&&mobileLayout.matches&&$('#site-sidebar').classList.contains('open')){
+    const items=[...$('#site-sidebar').querySelectorAll('a,button')];const first=items[0],last=items.at(-1);
+    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+    else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+  }
+});
+$('#menu-toggle').addEventListener('click',()=>setMenu(true));
+$('#menu-close').addEventListener('click',()=>closeMenu(true));
+$('#nav-scrim').addEventListener('click',()=>closeMenu(true));
+mobileLayout.addEventListener('change',()=>closeMenu());
+$('.skip-link').addEventListener('click',event=> {event.preventDefault();$('#content').focus();$('#content').scrollIntoView();});
+$('#theme-toggle').addEventListener('click',()=> {learning.prefs.theme=learning.prefs.theme==='dark'?'light':'dark';save('prefs');applyPreferences();});
+window.addEventListener('hashchange',route);
 route();

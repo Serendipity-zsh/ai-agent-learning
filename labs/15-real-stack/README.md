@@ -1,5 +1,7 @@
 # Lab 15：真实技术栈部署骨架
 
+> 实现范围：当前 Compose 仅声明数据库、Redis 和 Qdrant；API 的 retrieve/propose 是占位节点，尚未连接模型、索引、数据库或 OTel。此目录用于理解职责，不代表真实端到端集成已完成。
+
 这是从“标准库教学实现”进入真实工程的桥梁。目录提供一个不包含密钥的服务骨架：FastAPI 接入请求，LangGraph 承载可恢复流程，PostgreSQL 保存业务状态，Redis 用于短期队列/锁，Qdrant 保存向量索引，OpenTelemetry 负责 trace。
 
 ## 启动基础设施
